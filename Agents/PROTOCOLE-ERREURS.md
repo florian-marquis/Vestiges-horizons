@@ -67,6 +67,11 @@ Le principe s'étend au-delà des erreurs. **Toute information apprise pendant l
 - Une information déjà dans un document court lu à chaque session (ce routeur, les conventions) n'est **pas** dupliquée : on ne paie jamais deux fois la même information.
 - À l'inverse, un résumé ne remplace pas son document source : s'il rend le document source inutile, on ne conserve que le résumé ; sinon le résumé doit dire quand rouvrir la source.
 
+**Mesure du gain/coût** :
+- **Coût** : Compter les tokens de l'entrée via un outil de comptage (ex. : `wc -c` + estimation tokens/char).
+- **Gain** : Estimer le nombre de **re-lectures évitées** par session (ex. : "Sans cette entrée, un agent relirait 6 000 tokens du cadrage pour chaque tâche → gain = 6 000 tokens/tâche").
+- **Audit** : À chaque ajout dans `memoire-vive.md`, **documenter la méthode d'estimation** (ex. : "Basé sur 3 sessions test : moyenne de 2 re-lectures du cadrage par tâche").
+
 ## 6. Cohérence avec le reste du système
 
 - Une règle globale candidate (pas une info, une règle) suit le mode PILOTAGE (test économique de `Agents/PILOTAGE.md` section 3), pas la mémoire vive.

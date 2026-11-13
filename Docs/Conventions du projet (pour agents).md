@@ -1,5 +1,5 @@
 
-# Conventions du projet — référence pour agents
+# Conventions du projet — référence pour agents — v2.1 (2024-11-13)
 
 Document court, à fournir à Cursor en contexte système. Le cadrage reste la source de vérité du design ; celui-ci fixe les règles d'exécution.
 
@@ -47,3 +47,11 @@ Document court, à fournir à Cursor en contexte système. Le cadrage reste la s
 
 26. **Implémentation canonique unique et arrondi déclaré** : toute grandeur agrégée ou cumulée a une seule implémentation canonique ; recalculer la même grandeur par deux chemins est un défaut. La politique d'arrondi est déclarée par opération (division : troncature ou arrondi, direction fixe, jamais alternée) ; les cumuls longs passent par des entiers à échelle déclarée, jamais par des sommes de quotients réarrangés. Les tests de propriété (permutation d'insertion, découpage alternatif, extraction répétée, exécution pas à pas contre batch) s'exécutent en continu comme les invariants.
 27. **Observabilité de première classe** : les outils de diagnostic sont entretenus avec le code de simulation, pas ajoutés après coup : séries synthétiques à pas fixe (quotidien et décennal) des agrégats, tableau de bord textuel avec diff entre deux dates, reprise depuis un snapshot, requête « explique » qui liste les contributions terme à terme à une variation d'agrégat. Le journal causal explique un événement ; les séries disent quand regarder.
+
+---
+
+## Historique des versions
+
+- **v2.1** (2024-11-13) : Ajout des règles 26-27 (arithmétique et observabilité).
+- **v2.0** (2024-11-XX) : Ajout des règles 18-25 (déterminisme et validation).
+- **v1.0** (2024-11-XX) : Version initiale (règles 1-17).

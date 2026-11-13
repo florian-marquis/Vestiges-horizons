@@ -18,6 +18,11 @@ Ce fichier est le point d'entrée unique des agents IA travaillant dans ce dép�
 5. À l'ouverture d'une session sans mode déclaré : lire `Agents/etat-mode.md` et reprendre le mode indiqué, sans redemander confirmation.
 6. En cas d'ambiguïté sur la frontière entre les deux projets : rester dans le mode courant et poser une seule question précise à l'utilisateur.
 
+**En mode PILOTAGE, charger dans cet ordre :**
+1. `AGENTS.md` (ce fichier)
+2. `Agents/PILOTAGE.md`
+3. `Agents/etat-mode.md` (pour confirmation)
+
 ## 3. Hiérarchie des documents de référence (mode JEU)
 
 En cas de conflit, dans l'ordre décroissant :
