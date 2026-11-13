@@ -10,4 +10,12 @@ Règle d'admission (voir `Agents/PROTOCOLE-ERREURS.md`, sections 3 et 5) : une e
 - Coût : ~120 tokens (cette entrée).
 - Origine : AGENTS.md, PILOTAGE.md.
 
+---
+
+### P-1 — Synchronisation cache après write_file (promu P-1)
+- Info : Après `write_file`, toujours faire `git add <fichier> && git commit -m "..."` pour forcer la synchronisation du cache. Sans commit, `cat`/`wc -l` peut montrer l'ancien contenu.
+- Gain : Évite 1-2h de débogage par incident (recherche de bug fantôme, re-écriture inutile).
+- Coût : ~50 tokens.
+- Origine : solutions.md P-1, session Tranche 1.
+
 <!-- Nouvelles entrées ici (info ou problème promu), format PROTOCOLE-ERREURS.md section 5 -->
