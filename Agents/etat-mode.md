@@ -1,0 +1,1 @@
+Mode actuel : PILOTAGE — le travail porte sur le système d'instruction des agents (routeur, protocoles, processus). Basculer vers le mode JEU uniquement sur instruction explicite de l'utilisateur, puis réécrire la ligne du haut.
