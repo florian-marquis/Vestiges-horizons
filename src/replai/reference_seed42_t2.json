@@ -1,0 +1,62 @@
+{
+  "cohorts": [
+    {
+      "id": 144115188075855872,
+      "population": 200,
+      "total_attachment": 0,
+      "total_griefs": 0,
+      "total_money": 0
+    },
+    {
+      "id": 144115188075855873,
+      "population": 100,
+      "total_attachment": 0,
+      "total_griefs": 0,
+      "total_money": 0
+    }
+  ],
+  "journal_entries": [
+    {
+      "actor": 72057594037927936,
+      "day": 0,
+      "decision_type": 1,
+      "event_id": 1,
+      "id": 0,
+      "phase": 6
+    },
+    {
+      "actor": 72057594037927937,
+      "day": 0,
+      "decision_type": 1,
+      "event_id": 2,
+      "id": 1,
+      "phase": 6
+    },
+    {
+      "actor": 72057594037927938,
+      "day": 0,
+      "decision_type": 1,
+      "event_id": 3,
+      "id": 2,
+      "phase": 6
+    },
+    {
+      "actor": 72057594037927939,
+      "day": 0,
+      "decision_type": 1,
+      "event_id": 4,
+      "id": 3,
+      "phase": 6
+    },
+    {
+      "actor": 72057594037927940,
+      "day": 0,
+      "decision_type": 1,
+      "event_id": 5,
+      "id": 4,
+      "phase": 6
+    }
+  ],
+  "named_individuals": [],
+  "seed": 42
+}

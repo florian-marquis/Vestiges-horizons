@@ -1,11 +1,15 @@
-//! Vestiges Horizons - Noyau de simulation (Tranche 1)
+//! Vestiges Horizons - Noyau de simulation (Tranche 1 + Tranche 2)
 //! 
 //! Implémentation du noyau temporel avec horloge, file d'événements,
 //! ordonnancement déterministe et état sérialisable.
+//! 
+//! Tranche 2 : Identités et Journal causal
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
+
+pub mod entities;
 
 // ============================================================================
 // TYPES DE BASE
