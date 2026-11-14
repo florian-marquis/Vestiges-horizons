@@ -10,6 +10,133 @@ use std::collections::{BTreeMap, VecDeque};
 use crate::entities::EntityId;
 
 // ============================================================================
+// Q(A) - TABLE D'ACTIONS
+// ============================================================================
+
+/// Type d'action Q(a)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum ActionType {
+    // Actions d'emploi
+    Embaucher = 0,
+    Licencier = 1,
+    MonterSalaire = 2,
+    BaisserSalaire = 3,
+    // Actions de production
+    Investir = 4,
+    Entretenir = 5,
+    Fermer = 6,
+    // Actions de prix
+    MonterPrix = 7,
+    BaisserPrix = 8,
+    TenirPrix = 9,
+}
+
+/// Entrée de la table Q(a) : action + poids
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QaEntry {
+    pub action: ActionType,
+    /// Poids de base (en millièmes pour éviter les flottants)
+    pub poids: u32,
+}
+
+/// Table Q(a) pour une firme
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QaTable {
+    /// Entrées de la table
+    pub entries: Vec<QaEntry>,
+    /// Modulateurs par traits (pour l'empathie)
+    pub modulateurs: BTreeMap<ActionType, i32>,
+}
+
+impl QaTable {
+    pub fn new() -> Self {
+        QaTable {
+            entries: Vec::new(),
+            modulateurs: BTreeMap::new(),
+        }
+    }
+    
+    /// Ajoute une entrée à la table
+    pub fn add_entry(&mut self, action: ActionType, poids: u32) {
+        self.entries.push(QaEntry { action, poids });
+    }
+    
+    /// Applique la modulation par les traits du décideur
+    /// §6.20 : L'empathie module les poids
+    pub fn appliquer_traits(&mut self, traits: &TraitsDecideur) {
+        // Moduler les actions selon l'empathie
+        // Exemple : l'empathie réduit le poids de "Licencier"
+        // et augmente le poids de "Embaucher", "MonterSalaire"
+        
+        let empathy_factor = traits.empathie as i32;
+        
+        // Licencier : poids réduit proportionnellement à l'empathie
+        self.modulateurs.insert(ActionType::Licencier, -empathy_factor / 2);
+        
+        // Embaucher : poids augmenté
+        self.modulateurs.insert(ActionType::Embaucher, empathy_factor / 2);
+        
+        // MonterSalaire : poids augmenté
+        self.modulateurs.insert(ActionType::MonterSalaire, empathy_factor / 3);
+        
+        // BaisserSalaire : poids réduit
+        self.modulateurs.insert(ActionType::BaisserSalaire, -empathy_factor / 3);
+    }
+    
+    /// Évalue une action : retourne le poids final
+    /// §18.2 : Q(a) d'emploi modulée par traits
+    pub fn evaluer(&self, action: ActionType) -> i64 {
+        // Trouver la base
+        let base = self.entries.iter()
+            .find(|e| e.action == action)
+            .map(|e| e.poids as i64)
+            .unwrap_or(0);
+        
+        // Appliquer le modulateur
+        let modulateur = self.modulateurs.get(&action).copied().unwrap_or(0);
+        
+        // Poids final = base + modulateur
+        (base + modulateur as i64).max(0) // Ne pas descendre en dessous de 0
+    }
+    
+    /// Sélectionne la meilleure action
+    pub fn selectionner_meilleure(&self) -> Option<ActionType> {
+        let mut meilleure_action: Option<ActionType> = None;
+        let mut meilleur_poids = i64::MIN;
+        
+        for entry in &self.entries {
+            let poids = self.evaluer(entry.action);
+            if poids > meilleur_poids {
+                meilleur_poids = poids;
+                meilleure_action = Some(entry.action);
+            }
+        }
+        
+        meilleure_action
+    }
+}
+
+/// Contexte de décision pour Q(a)
+#[derive(Debug, Clone)]
+pub struct DecisionContext {
+    /// Firme concernée
+    pub firme: EntityId,
+    /// Cohorte visée
+    pub cohorte: EntityId,
+    /// Salaire réel actuel
+    pub salaire_reel: u64,
+    /// Salaire cible
+    pub salaire_cible: u64,
+    /// Trésorerie de la firme
+    pub tresorerie: u64,
+    /// Demande actuelle
+    pub demande: u32,
+    /// Offre actuelle
+    pub offre: u32,
+}
+
+// ============================================================================
 // TYPES PRINCIPAUX
 // ============================================================================
 
@@ -489,6 +616,113 @@ impl MarcheDuTravail {
     pub fn mettre_a_jour_volonte(&mut self, cohorte: EntityId, heures: u32) {
         *self.volonte.entry(cohorte).or_insert(0) = heures;
     }
+    
+    /// Q(a) d'emploi : évalue une action pour une firme
+    /// §18.2 : Q(a) d'emploi modulée par les traits du décideur
+    pub fn qa_emploi(&self, firme: EntityId, action: ActionType) -> i64 {
+        // Récupérer la table Q(a) de la firme
+        // Pour l'instant, on utilise une table par défaut
+        // À améliorer : chaque firme a sa propre table
+        
+        let table = self.get_qa_table(firme);
+        table.evaluer(action)
+    }
+    
+    /// Retourne la table Q(a) pour une firme
+    pub fn get_qa_table(&self, firme: EntityId) -> QaTable {
+        // Pour l'instant, table par défaut
+        // À améliorer : stocker les tables par firme
+        let mut table = QaTable::new();
+        
+        // Ajouter les actions de base avec des poids par défaut
+        table.add_entry(ActionType::Embaucher, 500);
+        table.add_entry(ActionType::Licencier, 300);
+        table.add_entry(ActionType::MonterSalaire, 400);
+        table.add_entry(ActionType::BaisserSalaire, 200);
+        
+        // Appliquer les traits du décideur
+        if let Some(traits) = self.traits_decideurs.get(&firme) {
+            table.appliquer_traits(traits);
+        }
+        
+        table
+    }
+    
+    /// Prend une décision ponctuelle de métier
+    /// §18.3 : ~1/mois, à clé stable, même table pour PNJ et joueur
+    pub fn decision_ponctuelle(
+        &self,
+        individu: EntityId,
+        contexte: &DecisionPonctuelle,
+        cle_stable: u64,
+    ) -> ActionType {
+        // Pour l'instant, sélection simple basée sur la clé
+        // À améliorer : utiliser une table de décisions ponctuelles
+        
+        // Utiliser la clé stable pour déterminer l'option
+        let index = (cle_stable % contexte.options.len() as u64) as usize;
+        
+        // Mapper l'option à une action
+        // Pour l'instant, on retourne une action par défaut
+        // À améliorer : mapping propre
+        contexte.options.get(index).map(|&opt| {
+            match opt {
+                0 => ActionType::Embaucher,
+                1 => ActionType::Licencier,
+                2 => ActionType::MonterSalaire,
+                3 => ActionType::BaisserSalaire,
+                _ => ActionType::Embaucher,
+            }
+        }).unwrap_or(ActionType::Embaucher)
+    }
+    
+    /// Met à jour l'engagement après une décision observable
+    /// §6.20 : Mis à jour par les décisions observées de la firme
+    pub fn mettre_a_jour_engagement_par_decision(
+        &mut self,
+        firme: EntityId,
+        decision: ActionType,
+        day: i64,
+    ) {
+        // Trouver tous les employés de cette firme
+        for ((employe, f), engagement) in self.engagements.iter_mut() {
+            if *f == firme {
+                // Calculer le delta basé sur la décision
+                let delta = match decision {
+                    ActionType::Embaucher => 10, // Décision positive
+                    ActionType::MonterSalaire => 15,
+                    ActionType::Entretenir => 10,
+                    ActionType::Licencier => -20, // Décision négative
+                    ActionType::BaisserSalaire => -15,
+                    ActionType::Fermer => -30,
+                    _ => 0,
+                };
+                
+                engagement.mise_a_jour(delta, day, 500);
+            }
+        }
+    }
+    
+    /// Pondère l'arrêt maladie en fonction de l'engagement
+    /// §6.20 : engagement bas → présentéisme, engagement haut → repos
+    pub fn ponderer_arret_maladie(&self, employe: EntityId, firme: EntityId) -> bool {
+        // Récupérer l'engagement
+        if let Some(engagement) = self.engagements.get(&(employe, firme)) {
+            // Seuil : engagement < 300 → présentéisme (continue à travailler)
+            // engagement >= 300 → repos
+            engagement.valeur >= 300
+        } else {
+            // Pas d'engagement enregistré → repos par défaut
+            true
+        }
+    }
+    
+    /// Bascule du bouchon de travail (tranche 4 → tranche 6)
+    /// §18.1 : Transition sans saut
+    pub fn basculer_dotation(&mut self) {
+        // Pour l'instant, rien à faire car on n'a pas de bouchon
+        // À implémenter quand on intégrera avec la tranche 4
+    }
 }
 
 // ============================================================================
@@ -678,5 +912,107 @@ mod tests {
         let (production, goulot) = marche.production_goulot(1, &postes_pourvus);
         assert_eq!(production, 10); // Goulot = cuisinier (10)
         assert_eq!(goulot, Some((100, 10)));
+    }
+    
+    // ============================================================================
+    // Tests Q(a) - §18.2
+    // ============================================================================
+    
+    /// §18.2 : Q(a) d'emploi modulée par traits
+    #[test]
+    fn test_qa_emploi_modulation() {
+        let mut marche = MarcheDuTravail::new();
+        
+        let firme_patiente = EntityId::new(crate::entities::EntityType::Firm, 1);
+        let firme_churn = EntityId::new(crate::entities::EntityType::Firm, 2);
+        
+        // Ajouter des traits
+        marche.traits_decideurs.insert(firme_patiente, TraitsDecideur::new(800));
+        marche.traits_decideurs.insert(firme_churn, TraitsDecideur::new(200));
+        
+        // Évaluer les actions
+        let qa_patiente_licencier = marche.qa_emploi(firme_patiente, ActionType::Licencier);
+        let qa_churn_licencier = marche.qa_emploi(firme_churn, ActionType::Licencier);
+        
+        let qa_patiente_embaucher = marche.qa_emploi(firme_patiente, ActionType::Embaucher);
+        let qa_churn_embaucher = marche.qa_emploi(firme_churn, ActionType::Embaucher);
+        
+        // La firme patiente a un poids plus faible pour licencier
+        assert!(qa_patiente_licencier < qa_churn_licencier);
+        
+        // La firme patiente a un poids plus élevé pour embaucher
+        assert!(qa_patiente_embaucher > qa_churn_embaucher);
+    }
+    
+    /// §18.2 : Q(a) table complète
+    #[test]
+    fn test_qa_table_selection() {
+        let mut table = QaTable::new();
+        
+        // Ajouter des entrées avec différents poids
+        table.add_entry(ActionType::Embaucher, 500);
+        table.add_entry(ActionType::Licencier, 300);
+        table.add_entry(ActionType::MonterSalaire, 400);
+        
+        // Sans modulation, Embaucher a le poids le plus élevé
+        let meilleure = table.selectionner_meilleure();
+        assert_eq!(meilleure, Some(ActionType::Embaucher));
+        
+        // Appliquer les traits (empathie élevée)
+        table.appliquer_traits(&TraitsDecideur::new(1000));
+        
+        // Après modulation, Embaucher devrait toujours être la meilleure
+        let meilleure = table.selectionner_meilleure();
+        assert_eq!(meilleure, Some(ActionType::Embaucher));
+    }
+    
+    /// §6.20 : Engagement mis à jour par décisions observées
+    #[test]
+    fn test_engagement_mis_a_jour_par_decision() {
+        let mut marche = MarcheDuTravail::new();
+        
+        let firme = EntityId::new(crate::entities::EntityType::Firm, 1);
+        let employe1 = EntityId::new(crate::entities::EntityType::NamedIndividual, 1);
+        let employe2 = EntityId::new(crate::entities::EntityType::NamedIndividual, 2);
+        
+        // Créer des engagements initiaux
+        marche.engagements.insert((employe1, firme), Engagement::new(employe1, firme, 500));
+        marche.engagements.insert((employe2, firme), Engagement::new(employe2, firme, 500));
+        
+        // La firme prend une décision positive (embaucher)
+        marche.mettre_a_jour_engagement_par_decision(firme, ActionType::Embaucher, 0);
+        
+        // L'engagement devrait augmenter
+        let engagement1 = marche.engagements.get(&(employe1, firme)).unwrap();
+        assert!(engagement1.valeur >= 500);
+        
+        // La firme prend une décision négative (licencier)
+        marche.mettre_a_jour_engagement_par_decision(firme, ActionType::Licencier, 10);
+        
+        // L'engagement devrait diminuer
+        let engagement1 = marche.engagements.get(&(employe1, firme)).unwrap();
+        assert!(engagement1.valeur < 500);
+    }
+    
+    /// §6.20 : Pondération arrêt maladie par engagement
+    #[test]
+    fn test_ponderer_arret_maladie() {
+        let mut marche = MarcheDuTravail::new();
+        
+        let firme = EntityId::new(crate::entities::EntityType::Firm, 1);
+        let employe_engage = EntityId::new(crate::entities::EntityType::NamedIndividual, 1);
+        let employe_desengage = EntityId::new(crate::entities::EntityType::NamedIndividual, 2);
+        
+        // Engagement élevé
+        marche.engagements.insert((employe_engage, firme), Engagement::new(employe_engage, firme, 800));
+        
+        // Engagement faible
+        marche.engagements.insert((employe_desengage, firme), Engagement::new(employe_desengage, firme, 200));
+        
+        // L'employé engagé choisit le repos
+        assert!(marche.ponderer_arret_maladie(employe_engage, firme));
+        
+        // L'employé désengagé choisit le présentéisme (continue à travailler)
+        assert!(!marche.ponderer_arret_maladie(employe_desengage, firme));
     }
 }
