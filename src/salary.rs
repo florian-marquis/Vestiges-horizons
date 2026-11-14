@@ -336,6 +336,62 @@ mod tests {
         assert_eq!(sr.calculer_dg(), -20);
     }
     
+    /// §19.2 T7.3 : Choc 11 complet - impôt ×2 pendant un an
+    /// → griefs traçables terme à terme (u, p, q)
+    #[test]
+    fn test_t7_3_choc_11_complet() {
+        let mut manager = SalaireReelEtGriefsManager::new();
+        
+        let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
+        manager.ajouter_entite(entite);
+        
+        // Initialisation : panier normal, salaire normal
+        manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
+        manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
+        manager.mettre_a_jour_panier(PanierComposante::Eau, 500);
+        manager.mettre_a_jour_panier(PanierComposante::Fiscalite, 300);
+        
+        manager.mettre_a_jour_salaire_horaire(entite, 1000);
+        manager.mettre_a_jour_heures(entite, 8);
+        
+        // Entrées initiales (valeurs normales)
+        if let Some(e) = manager.entites.get_mut(&entite) {
+            e.u = 100; // Besoins alimentaires non satisfaits
+            e.p = 100; // Pression des prix
+            e.q = 500; // Qualité effective
+            e.mettre_a_jour_griefs();
+        }
+        
+        let griefs_initial = manager.get_griefs(entite).unwrap();
+        let salaire_reel_initial = manager.get_salaire_reel(entite).unwrap();
+        
+        // Appliquer choc 11 : impôt ×2 (composante fiscalité du panier)
+        manager.mettre_a_jour_panier(PanierComposante::Fiscalite, 600);
+        
+        let salaire_reel_apres = manager.get_salaire_reel(entite).unwrap();
+        
+        // Salaire réel doit baisser (coût du panier a augmenté)
+        assert!(salaire_reel_apres < salaire_reel_initial);
+        
+        // Mettre à jour p (pression des prix monte à cause du choc fiscal)
+        if let Some(e) = manager.entites.get_mut(&entite) {
+            e.p = 300; // Pression des prix augmentée
+            e.mettre_a_jour_griefs();
+        }
+        
+        let griefs_apres = manager.get_griefs(entite).unwrap();
+        
+        // Griefs doivent monter (p a augmenté)
+        assert!(griefs_apres > griefs_initial);
+        
+        // Vérifier que les griefs sont traçables : on peut retrouver u, p, q
+        if let Some(e) = manager.entites.get(&entite) {
+            assert_eq!(e.u, 100);
+            assert_eq!(e.p, 300);
+            assert_eq!(e.q, 500);
+        }
+    }
+    
     /// §19.2 T7.4 : Intégration événementielle
     /// G est mis à jour à chaque changement d'entrée, résultat identique à l'intégration continue
     #[test]
