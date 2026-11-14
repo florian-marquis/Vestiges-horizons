@@ -171,7 +171,7 @@
 | T6.1 | Décisions d'emploi expliquées | labor.rs | ✅ | `test_qa_table_creation` |
 | T6.2 | Choc 3 : commande ville ×2 pendant 60 jours | labor.rs | ✅ | `test_t6_2_choc_3` |
 | T6.3 | Choc 4 : prix composants +30% | labor.rs | ✅ | `test_t6_3_choc_4` |
-| T6.4 | Parrainage | labor.rs | ✅ | `test_lien_parrainage` |
+| T6.4 | Parrainage | labor.rs | ✅ | `test_t6_4_parrainage` |
 | T6.5 | Deux régimes | labor.rs | ✅ | `test_t6_5_deux_regimes` |
 | T6.6 | Transition du bouchon | labor.rs | ✅ | `test_t6_6_bouchon_transition` |
 | T6.7 | Présentéisme et contagion | labor.rs | ✅ | `test_t6_7_presentesime_contagion` |
@@ -247,3 +247,4 @@ Aucune - la couverture de la section 17.2 est maintenant à 86%
 | 2024-11-14 | T6 | Implémentation complète de labor.rs (Q(a), engagement, chocs 3-4, parrainage) | Agent IA |
 | 2024-11-14 | T6 | Ajout tests T6.2-T6.7 (7 nouveaux tests) | Agent IA |
 | 2024-11-14 | Matrice | Ajout section 18 (Tranche 6) avec 26 éléments | Agent IA |
+| 2024-11-14 | T6.4 | Implémentation complète du parrainage (Maîtrise, peut_parrainer, test mis à jour) | Agent IA |
