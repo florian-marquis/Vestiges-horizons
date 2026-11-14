@@ -82,6 +82,12 @@ pub struct SalaireReelEtGriefs {
     pub p: i64,
     /// q : qualité effective (0-1000)
     pub q: i64,
+    /// Taux de risque cumulé (0-100)
+    pub taux_risque: i64,
+    /// Seuil de risque (0-100)
+    pub seuil_risque: i64,
+    /// Date de franchissement du seuil (jour)
+    pub date_franchissement: Option<i64>,
 }
 
 impl SalaireReelEtGriefs {
@@ -96,6 +102,9 @@ impl SalaireReelEtGriefs {
             u: 0,
             p: 0,
             q: 0,
+            taux_risque: 0,
+            seuil_risque: 50, // Seuil par défaut
+            date_franchissement: None,
         }
     }
     
@@ -140,6 +149,35 @@ impl SalaireReelEtGriefs {
             GriefEntree::Q => self.q = valeur,
         }
         self.mettre_a_jour_griefs();
+        self.calculer_taux_risque();
+    }
+    
+    /// Calcule le taux de risque (fonction de G, salaire réel, moyens de la cohorte)
+    /// §19.2 : le taux de risque cumulé ne franchit le seuil que si le salaire réel est bas
+    pub fn calculer_taux_risque(&mut self) {
+        // Formule simplifiée pour T7.5 : taux_risque = G + max(0, 100 - salaire_reel/10)
+        // Plus le salaire réel est bas, plus le taux de risque est élevé
+        // G est en [0, 100], salaire_reel est en pourcentage
+        let salaire_factor = (100i64 - (self.salaire_reel / 10) as i64).max(0);
+        self.taux_risque = (self.griefs + salaire_factor).clamp(0, 100);
+        
+        // Vérifier si le seuil est franchi
+        if self.taux_risque >= self.seuil_risque {
+            self.date_franchissement = Some(0); // À implémenter : date exacte
+        } else {
+            self.date_franchissement = None;
+        }
+    }
+    
+    /// Vérifie si le seuil de risque est franchi
+    pub fn seuil_franchi(&self) -> bool {
+        self.taux_risque >= self.seuil_risque
+    }
+    
+    /// Met à jour le seuil de risque
+    pub fn set_seuil_risque(&mut self, seuil: i64) {
+        self.seuil_risque = seuil.clamp(0, 100);
+        self.calculer_taux_risque();
     }
 }
 
@@ -447,5 +485,43 @@ mod tests {
         // Avec u=200, p=100, q=800: dG = 0.8*200 + 0.2*100 - 0.25*800 = 160+20-200 = -20
         // griefs_4 = 100 + (-20) = 80 (dans les bornes)
         assert!(griefs_4 < griefs_2);
+    }
+    
+    /// §19.2 T7.5 : Seuil de risque (entrées)
+    /// → le taux de risque cumulé ne franchit le seuil que si le salaire réel est bas
+    #[test]
+    fn test_t7_5_seuil_risque() {
+        let mut manager = SalaireReelEtGriefsManager::new();
+        
+        let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
+        manager.ajouter_entite(entite);
+        
+        // Configuration : seuil de risque à 50
+        if let Some(e) = manager.entites.get_mut(&entite) {
+            e.set_seuil_risque(50);
+        }
+        
+        // Cas 1 : Salaire réel élevé, griefs bas → seuil non franchi
+        manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
+        manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
+        manager.mettre_a_jour_salaire_horaire(entite, 5000); // Salaire élevé
+        manager.mettre_a_jour_heures(entite, 8);
+        
+        if let Some(e) = manager.entites.get_mut(&entite) {
+            e.u = 0; e.p = 0; e.q = 1000; // Qualité parfaite
+            e.calculer_taux_risque();
+        }
+        
+        assert!(!manager.entites[&entite].seuil_franchi());
+        
+        // Cas 2 : Salaire réel bas, griefs élevés → seuil franchi
+        manager.mettre_a_jour_salaire_horaire(entite, 500); // Salaire bas
+        
+        if let Some(e) = manager.entites.get_mut(&entite) {
+            e.u = 500; e.p = 500; e.q = 0; // Qualité mauvaise
+            e.calculer_taux_risque();
+        }
+        
+        assert!(manager.entites[&entite].seuil_franchi());
     }
 }
