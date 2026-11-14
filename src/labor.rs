@@ -308,6 +308,34 @@ impl Engagement {
     }
 }
 
+/// Maîtrise d'une pratique par un individu
+/// §18.3 : Niveau 0-10, pratique ≥ 3 requis pour parrainer
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Maitrise {
+    pub individu: EntityId,
+    pub pratique_id: u64,
+    /// Niveau : 0-10
+    pub niveau: u8,
+    /// Expérience cumulée
+    pub experience: u32,
+}
+
+impl Maitrise {
+    pub fn new(individu: EntityId, pratique_id: u64) -> Self {
+        Maitrise {
+            individu,
+            pratique_id,
+            niveau: 0,
+            experience: 0,
+        }
+    }
+    
+    /// Vérifie si le niveau permet de parrainer (≥ 3)
+    pub fn peut_parrainer(&self) -> bool {
+        self.niveau >= 3
+    }
+}
+
 /// Lien de parrainage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LienParrainage {
@@ -469,6 +497,8 @@ pub struct MarcheDuTravail {
     pub traits_decideurs: BTreeMap<EntityId, TraitsDecideur>,
     /// Engagements (employé → firme → valeur)
     pub engagements: BTreeMap<(EntityId, EntityId), Engagement>,
+    /// Maîtrises des pratiques par individu
+    pub maitrises: BTreeMap<EntityId, Vec<Maitrise>>,
     /// Liens de parrainage
     pub parrainages: Vec<LienParrainage>,
     /// Recettes multi-postes
@@ -487,6 +517,7 @@ impl MarcheDuTravail {
             heures_travaillees: BTreeMap::new(),
             traits_decideurs: BTreeMap::new(),
             engagements: BTreeMap::new(),
+            maitrises: BTreeMap::new(),
             parrainages: Vec::new(),
             recettes: BTreeMap::new(),
             next_id: 0,
@@ -632,19 +663,52 @@ impl MarcheDuTravail {
     }
     
     /// Parraine un journalier
-    /// §34.3 : condition : pratique ≥ 3
+    /// Ajoute ou met à jour une maîtrise pour un individu
+    pub fn ajouter_maitrise(&mut self, individu: EntityId, pratique_id: u64, niveau: u8) {
+        let maitrise = Maitrise {
+            individu,
+            pratique_id,
+            niveau,
+            experience: 0,
+        };
+        self.maitrises.entry(individu).or_default().push(maitrise);
+    }
+    
+    /// Vérifie si un individu peut parrainer (a au moins une pratique ≥ 3)
+    pub fn peut_parrainer(&self, individu: EntityId) -> bool {
+        if let Some(maitrises) = self.maitrises.get(&individu) {
+            maitrises.iter().any(|m| m.peut_parrainer())
+        } else {
+            false
+        }
+    }
+    
+    /// Parraine un journalier
+    /// §18.3 : condition : pratique ≥ 3, coût en temps régulier
     pub fn parrainer(
         &mut self,
         parrain: EntityId,
         filleul: EntityId,
-        _day: i64,
+        day: i64,
     ) -> bool {
         // Vérifier que le parrain a une pratique ≥ 3
-        // (À implémenter quand on aura le système de pratiques)
+        if !self.peut_parrainer(parrain) {
+            return false;
+        }
         
         let parrainage = LienParrainage::new(parrain, filleul);
         self.parrainages.push(parrainage);
         true
+    }
+    
+    /// Vérifie si un individu a été parrainé
+    pub fn est_parraine(&self, filleul: EntityId) -> bool {
+        self.parrainages.iter().any(|p| p.filleul == filleul)
+    }
+    
+    /// Obtient le parrain d'un individu s'il existe
+    pub fn get_parrain(&self, filleul: EntityId) -> Option<EntityId> {
+        self.parrainages.iter().find(|p| p.filleul == filleul).map(|p| p.parrain)
     }
     
     /// Calcule la production avec goulot
@@ -998,20 +1062,43 @@ mod tests {
         assert_eq!(embauches[0].0, id); // Le poste est pourvu
     }
     
-    /// §34.4 T6.4 : Parrainage
+    /// §18.3 T6.4 : Parrainage
+    /// Un employé de pratique ≥ 3 parraine un journalier
+    /// → essai accordé plus vite, lien durable dans la mémoire saillante
     #[test]
     fn test_t6_4_parrainage() {
         let mut marche = MarcheDuTravail::new();
         
         let parrain = EntityId::new(crate::entities::EntityType::NamedIndividual, 1);
         let filleul = EntityId::new(crate::entities::EntityType::NamedIndividual, 2);
+        let pratique_id = 1u64;
         
-        // Parrainer
-        let success = marche.parrainer(parrain, filleul, 0);
-        assert!(success);
+        // Cas 1 : Parrain sans pratique suffisante → échoue
+        let success_without_maitrise = marche.parrainer(parrain, filleul, 0);
+        assert!(!success_without_maitrise);
+        assert!(marche.parrainages.is_empty());
+        
+        // Ajouter une maîtrise niveau 2 (insuffisant)
+        marche.ajouter_maitrise(parrain, pratique_id, 2);
+        let success_level_2 = marche.parrainer(parrain, filleul, 0);
+        assert!(!success_level_2);
+        assert!(marche.parrainages.is_empty());
+        
+        // Ajouter une maîtrise niveau 3 (suffisant)
+        marche.ajouter_maitrise(parrain, pratique_id, 3);
+        let success_level_3 = marche.parrainer(parrain, filleul, 0);
+        assert!(success_level_3);
         assert_eq!(marche.parrainages.len(), 1);
         assert_eq!(marche.parrainages[0].parrain, parrain);
         assert_eq!(marche.parrainages[0].filleul, filleul);
+        
+        // Vérifier que le filleul est marqué comme parrainé
+        assert!(marche.est_parraine(filleul));
+        assert_eq!(marche.get_parrain(filleul), Some(parrain));
+        
+        // Vérifier peut_parrainer
+        assert!(marche.peut_parrainer(parrain));
+        assert!(!marche.peut_parrainer(filleul)); // Pas de maîtrise pour le filleul
     }
     
     /// §34.4 T6.8 : Goulot multi-postes
