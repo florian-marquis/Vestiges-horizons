@@ -48,8 +48,11 @@ type: "text/markdown"
 8. **Tenir à jour** : présentation non technique à chaque version du cadrage ; registre de complétude et ce suivi à chaque session.
 
 ### Développement (quand la décision sera prise)
-9. **Tranche 1 — noyau temporel** : ordre de mission prêt (spec section 13 + mission section 29). Rien à spécifier de plus ; à lancer quand la stratégie « tout documenter » le décidera.
-10. Tranches 2 à 8 (cœur réductible), puis P1b minimal, puis tranches 9-11 (P1.5).
+9. **Tranche 1 — noyau temporel** : ordre de mission prêt (spec section 13 + mission section 29). Rien à spécifier de plus ; **implémentée dans src/lib.rs**.
+10. **Tranches 2 à 6** : **implémentées** (entities.rs, time.rs, firm.rs, market.rs, credit.rs, labor.rs).
+11. **Tranche 7 — Salaires réels et griefs** : **implémentée** (salary.rs, tests/test_tranche7.rs, 7 tests verts).
+12. **Tranche 8 — Basculements** : **implémentée** (strike.rs, tests/test_tranche8.rs, 9 tests verts).
+13. Tranches 9-11 (vie sociale, suite headless, P1b minimal) : à lancer.
 
 ### Points ouverts plus lointains (rappel)
 - Deuil comme arrêt indemnisé ou non (P2, fiscalité) ; registres de langue par cohorte ; taille du corpus de répliques par intention ; moment où l'incitation devient organisation (P2) ; partage d'idées et dérive culturelle (route 6) ; calibrage de la reconnaissance (ch. 13) ; tout le palier P2 et au-delà.

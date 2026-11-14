@@ -26,3 +26,17 @@ Règle d'admission (voir `Agents/PROTOCOLE-ERREURS.md`, sections 3 et 5) : une e
 - Coût : ~200 tokens.
 - Origine : Session implémentation T6, commit 5bbdb2d.
 - Tests : 73 tests pass (cargo test), benchmark P1 valide (I2, I4, I5, I8, I9).
+
+### T7 — Tranche 7 : Salaires réels et griefs implémentée
+- Info : La tranche 7 (panier, salaire réel, griefs) est implémentée dans `src/salary.rs` avec : calcul du panier (nourriture, logement, eau, fiscalité), salaire réel = (salaire_horaire × heures / coût_panier) × 100, intégration événementielle des griefs (dG = 0.8·u + 0.2·p − 0.25·q), équation de griefs bornée [0, 100], taux de risque fonction de G et salaire réel. Tous les tests T7.1-T7.7 passent (7 tests). L'invariant I8 (concordance griefs cohorte/individus) est implémenté à tolérance zéro dans `src/entities.rs`.
+- Gain : Évite la re-lecture de la spec §19. Permet de passer à T8 (basculements) qui dépend de T7.
+- Coût : ~150 tokens.
+- Origine : Session implémentation T7, commit 85af42a.
+- Tests : 7 tests pass (cargo test), I8 vert.
+
+### T8 — Tranche 8 : Basculements implémentée
+- Info : La tranche 8 (seuil de risque cumulé, grève) est implémentée dans `src/strike.rs` avec : gestion des grèves (Strike, StrikeManager), tirage unique par clé stable (décision 43, jamais re-tirable), planification du franchissement du seuil, fin de grève par concession (Q(a)) ou durée écoulée. Tous les tests T8.1-T8.5 passent (9 tests). Le déterminisme est validé (même graine → même date de grève).
+- Gain : Fermeture du noyau réductible P1 (T1-T8). Prêt pour T9 (vie sociale) ou la suite headless T10.
+- Coût : ~150 tokens.
+- Origine : Session implémentation T8, commit 85af42a.
+- Tests : 9 tests pass (cargo test), déterminisme validé (T8.5).
