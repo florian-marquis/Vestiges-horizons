@@ -25,6 +25,7 @@ pub mod credit;
 pub mod tax;
 pub mod meal;
 pub mod labor;
+pub mod salary;
 
 // ============================================================================
 // TYPES DE BASE
