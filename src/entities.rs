@@ -264,6 +264,8 @@ impl Cohort {
 // ============================================================================
 
 /// Individu nommé - échantillonnage déterministe d'une cohorte
+/// 
+/// Étendu pour la Tranche 3 : santé, états, âge, besoins
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NamedIndividual {
     pub id: EntityId,
@@ -275,7 +277,16 @@ pub struct NamedIndividual {
     pub balance: u64,
     /// Attachement
     pub attachment: i64,
-    // Âge (à implémenter plus tard)
+    /// Âge en années
+    pub age: u32,
+    /// Santé actuelle (0-1000)
+    pub health: u32,
+    /// Santé maximale (0-1000)
+    pub max_health: u32,
+    /// Foyer d'appartenance (optionnel)
+    pub household_id: Option<EntityId>,
+    /// Enfant contribuant (pour les 8-17 ans)
+    pub is_child_contributor: bool,
     // Pratiques maîtrisées (à implémenter plus tard)
 }
 
@@ -287,7 +298,49 @@ impl NamedIndividual {
             grief,
             balance,
             attachment,
+            age: 25, // Âge par défaut
+            health: crate::health::MAX_HEALTH, // Santé maximale par défaut
+            max_health: crate::health::MAX_HEALTH,
+            household_id: None,
+            is_child_contributor: false,
         }
+    }
+    
+    /// Crée un individu avec des valeurs de santé personnalisées
+    pub fn new_with_health(
+        id: EntityId,
+        cohort_id: EntityId,
+        grief: i64,
+        balance: u64,
+        attachment: i64,
+        age: u32,
+        health: u32,
+        max_health: u32,
+    ) -> Self {
+        let is_child_contributor = (8..=17).contains(&age);
+        
+        NamedIndividual {
+            id,
+            cohort_id,
+            grief,
+            balance,
+            attachment,
+            age,
+            health: health.min(crate::health::MAX_HEALTH),
+            max_health: max_health.min(crate::health::MAX_HEALTH),
+            household_id: None,
+            is_child_contributor,
+        }
+    }
+    
+    /// Retourne si l'individu est un enfant contribuant
+    pub fn is_child(&self) -> bool {
+        self.age < 18
+    }
+    
+    /// Retourne si l'individu peut travailler
+    pub fn can_work(&self) -> bool {
+        self.age >= 16 && self.health >= crate::health::WORK_INCAPACITY_THRESHOLD
     }
 }
 

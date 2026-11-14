@@ -1,0 +1,154 @@
+[
+  {
+    "data": {
+      "displayed_price": 1000,
+      "good_id": 0,
+      "good_type": "Food",
+      "market_id": 288230376151711744,
+      "stock": 100,
+      "type": "MarketCreated"
+    },
+    "day": 0,
+    "event_type": 501,
+    "id": 1,
+    "phase": 1,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "base_price": 1000,
+      "good_id": 0,
+      "good_type": "Food",
+      "nominal_capacity": 100,
+      "type": "ReferencePriceCreated"
+    },
+    "day": 0,
+    "event_type": 502,
+    "id": 2,
+    "phase": 1,
+    "priority": 0,
+    "seq": 1
+  },
+  {
+    "data": {
+      "borrower_id": 216172782113783808,
+      "interest_rate": 100,
+      "lender_id": 288230376151711745,
+      "loan_id": 0,
+      "principal": 100000,
+      "type": "LoanCreated"
+    },
+    "day": 0,
+    "event_type": 503,
+    "id": 3,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "employee_id": 72057594037927936,
+      "firm_id": 288230376151711744,
+      "gross_salary": 100000,
+      "type": "TaxWithheld",
+      "withheld_amount": 10000
+    },
+    "day": 0,
+    "event_type": 504,
+    "id": 4,
+    "phase": 2,
+    "priority": 0,
+    "seq": 1
+  },
+  {
+    "data": {
+      "allocation_type": "Pension",
+      "amount": 25000,
+      "household_id": 216172782113783808,
+      "type": "AllocationPaid"
+    },
+    "day": 0,
+    "event_type": 505,
+    "id": 5,
+    "phase": 2,
+    "priority": 0,
+    "seq": 2
+  },
+  {
+    "data": {
+      "available_food": 10,
+      "available_time": 8,
+      "budget": 10000,
+      "household_id": 216172782113783808,
+      "meal_mode": "HomeCooking",
+      "type": "MealModeResolved"
+    },
+    "day": 0,
+    "event_type": 506,
+    "id": 6,
+    "phase": 3,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "food_cost": 5000,
+      "household_id": 216172782113783808,
+      "housing_cost": 10000,
+      "tax_cost": 0,
+      "total_cost": 16200,
+      "type": "BasketCalculated",
+      "water_cost": 1200
+    },
+    "day": 0,
+    "event_type": 507,
+    "id": 7,
+    "phase": 3,
+    "priority": 0,
+    "seq": 1
+  },
+  {
+    "data": {
+      "demand": 120,
+      "good_type": "Food",
+      "new_price": 1100,
+      "old_price": 1000,
+      "type": "ReferencePriceUpdated"
+    },
+    "day": 30,
+    "event_type": 508,
+    "id": 8,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "amount": 10000,
+      "day": 30,
+      "loan_id": 0,
+      "type": "LoanPayment"
+    },
+    "day": 30,
+    "event_type": 509,
+    "id": 9,
+    "phase": 2,
+    "priority": 0,
+    "seq": 1
+  },
+  {
+    "data": {
+      "loan_id": 0,
+      "remaining_amount": 0,
+      "status": "Seized",
+      "type": "LoanStatusUpdated"
+    },
+    "day": 60,
+    "event_type": 510,
+    "id": 10,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  }
+]

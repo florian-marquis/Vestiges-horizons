@@ -1,0 +1,159 @@
+[
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "entity_type": "NamedIndividual",
+      "type": "CreateEntity"
+    },
+    "day": 0,
+    "event_type": 100,
+    "id": 1,
+    "phase": 1,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 216172782113783808,
+      "entity_type": "Household",
+      "type": "CreateEntity"
+    },
+    "day": 0,
+    "event_type": 101,
+    "id": 2,
+    "phase": 1,
+    "priority": 0,
+    "seq": 1
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "health": 1000,
+      "max_health": 1000,
+      "type": "HealthStatus"
+    },
+    "day": 0,
+    "event_type": 102,
+    "id": 3,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "time_usage": {
+        "Corvee": 2,
+        "Formation": 2,
+        "Loisir": 1,
+        "Recherche": 16,
+        "Repas": 2,
+        "Sommeil": 0,
+        "Trajet": 1,
+        "Travail": 8
+      },
+      "type": "TimeBudget"
+    },
+    "day": 0,
+    "event_type": 103,
+    "id": 4,
+    "phase": 3,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 216172782113783808,
+      "food_stock": {
+        "Base": 10,
+        "Moyenne": 5,
+        "Superieure": 2
+      },
+      "type": "HouseholdFood"
+    },
+    "day": 0,
+    "event_type": 104,
+    "id": 5,
+    "phase": 4,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "hidden_variables": {
+        "AccumulatedFatigue": 0,
+        "EconomicStress": 0,
+        "FutureUncertainty": 0,
+        "SocialTension": 0,
+        "TimePressure": 0
+      },
+      "type": "HiddenVariables"
+    },
+    "day": 0,
+    "event_type": 105,
+    "id": 6,
+    "phase": 5,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "triggered_states": [],
+      "type": "TriggeredStates"
+    },
+    "day": 0,
+    "event_type": 106,
+    "id": 7,
+    "phase": 6,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "health_issue": {
+        "issue_type": "Infectious",
+        "onset_day": 1,
+        "severity": "Mild",
+        "stable_key": 42
+      },
+      "type": "HealthIssue"
+    },
+    "day": 1,
+    "event_type": 107,
+    "id": 8,
+    "phase": 2,
+    "priority": 1,
+    "seq": 0
+  },
+  {
+    "data": {
+      "care_money": 1000,
+      "care_time": 2,
+      "entity_id": 72057594037927936,
+      "success": true,
+      "type": "HealthCare"
+    },
+    "day": 2,
+    "event_type": 108,
+    "id": 9,
+    "phase": 3,
+    "priority": 1,
+    "seq": 0
+  },
+  {
+    "data": {
+      "entity_id": 72057594037927936,
+      "health": 950,
+      "type": "HealthUpdate"
+    },
+    "day": 2,
+    "event_type": 109,
+    "id": 10,
+    "phase": 4,
+    "priority": 1,
+    "seq": 1
+  }
+]

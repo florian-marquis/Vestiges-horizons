@@ -59,6 +59,7 @@ Une instruction est un coût payé à **chaque session** ; son gain doit être s
 
 - Mettre à jour `Agents/etat-mode.md` si le mode a changé.
 - Ajouter une ligne à l'Historique ci-dessous si un fichier d'instruction a été créé ou restructuré.
+- **Commiter et pousser** toute modification de fichier d'instruction selon les conventions 28-33.
 
 ## 6. Audit rétroactif des règles existantes
 
@@ -67,6 +68,18 @@ Une instruction est un coût payé à **chaque session** ; son gain doit être s
 - **Condenser** (si redondante ou trop verbeuse).
 - **Supprimer** (si obsolète ou inapplicable).
 *Exemple : La règle 25 (spécification de tâche) coûte ~200 tokens. Si elle n'est utilisée que pour 1 tâche sur 10, son gain peut être < coût → à évaluer.*
+
+## 7. Sélection des modèles
+
+Lorsqu'un morceau de travail est jugé trop difficile à réaliser avec le modèle actuel, **estimer le modèle le moins coûteux nécessaire** pour accomplir ce morceau. L'agent obtient cette information en effectuant une recherche internet.
+
+**Catégories de quotas** :
+- **Quota modèles maison Cursor** : Cursor 2.5, Grok 4.6, Grok 4.7
+- **Quota modèles extérieurs Cursor** : Gemini, Claude, GPT
+
+## 8. Proposition proactive de la suite
+
+Pendant le codage du jeu, **toujours suggérer la suite la plus logique/pertinente** à accomplir. Si une décision de l'utilisateur est nécessaire, **préciser systématiquement un choix suggéré** parmi les options présentées.
 
 ## Historique
 

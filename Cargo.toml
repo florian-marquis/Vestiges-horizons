@@ -3,6 +3,10 @@ name = "vestiges-horizons"
 version = "0.2.0"
 edition = "2021"
 
+[[bin]]
+name = "generer_replai"
+path = "src/bin/generer_replai.rs"
+
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

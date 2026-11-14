@@ -9,7 +9,21 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
 
+pub mod common;
 pub mod entities;
+pub mod time;
+pub mod household;
+pub mod health;
+pub mod states;
+pub mod firm;
+pub mod recipe;
+pub mod asset;
+pub mod maintenance;
+pub mod production;
+pub mod market;
+pub mod credit;
+pub mod tax;
+pub mod meal;
 
 // ============================================================================
 // TYPES DE BASE

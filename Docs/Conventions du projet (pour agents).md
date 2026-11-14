@@ -50,8 +50,18 @@ Document court, à fournir à Cursor en contexte système. Le cadrage reste la s
 
 ---
 
+## Gestion de version et git
+
+28. **Commit systématique** : Toute modification de fichier source, spec, document de référence ou configuration doit être commité. Un commit par changement logique et cohérent, pas par fichier.
+29. **Messages de commit** : Format impératif court en une ligne : `<type>(<scope>): <description>`. Types autorisés : `feat` (fonctionnalité), `fix` (correction), `docs` (documentation), `refactor` (refactoring sans changement de comportement), `chore` (maintenance). Scope = module ou palier concerné. Exemple : `feat(p1-quartier): ajoute système de griefs des habitants`.
+30. **Branches** : `main` est la branche stable. Toute nouvelle fonctionnalité ou palier utilise une branche `feat/<nom>` ou `paliers/<pX>-<description>`, fusionnée par PR après validation humaine. Les corrections urgentes utilisent `hotfix/<problème>`.
+31. **Synchronisation** : `git pull` au début de chaque session pour intégrer les changements distants. `git push` après chaque commit local pour partager les modifications.
+32. **Interdiction des force-push** : Aucun `git push --force` ou `--force-with-lease` sans validation humaine explicite et documentée.
+33. **Atomicité des commits** : Un commit doit être atomique (un seul changement logique) et laisser le code dans un état compilable et testable. Si un changement casse les tests, il doit être corrigé avant le commit.
+
 ## Historique des versions
 
+- **v2.2** (2025-01-XX) : Ajout des règles 28-33 (gestion de version et git).
 - **v2.1** (2024-11-13) : Ajout des règles 26-27 (arithmétique et observabilité).
 - **v2.0** (2024-11-XX) : Ajout des règles 18-25 (déterminisme et validation).
 - **v1.0** (2024-11-XX) : Version initiale (règles 1-17).

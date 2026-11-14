@@ -1,0 +1,120 @@
+[
+  {
+    "data": {
+      "firm_id": 288230376151711744,
+      "firm_type": "Workshop",
+      "owner_id": 72057594037927936,
+      "production_scale": "Small",
+      "type": "CreateFirm"
+    },
+    "day": 0,
+    "event_type": 200,
+    "id": 1,
+    "phase": 1,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "asset_id": 648518346341351424,
+      "asset_type": "Machine",
+      "capacity": 1000,
+      "firm_id": 288230376151711744,
+      "initial_state": 1000,
+      "type": "CreateAsset",
+      "wear_rate": 10
+    },
+    "day": 0,
+    "event_type": 201,
+    "id": 2,
+    "phase": 1,
+    "priority": 1,
+    "seq": 0
+  },
+  {
+    "data": {
+      "asset_id": 648518346341351424,
+      "monthly_cost": 50,
+      "policy": "Normal",
+      "type": "MaintenanceDeclaration"
+    },
+    "day": 0,
+    "event_type": 202,
+    "id": 3,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "name": "Production de base",
+      "output_quantity": 10,
+      "recipe_id": 0,
+      "recipe_type": "Manufacturing",
+      "type": "CreateRecipe"
+    },
+    "day": 0,
+    "event_type": 203,
+    "id": 4,
+    "phase": 1,
+    "priority": 2,
+    "seq": 0
+  },
+  {
+    "data": {
+      "firm_id": 288230376151711744,
+      "order_id": 720575940379279360,
+      "quantity": 50,
+      "recipe_id": 0,
+      "type": "CreateProductionOrder"
+    },
+    "day": 1,
+    "event_type": 204,
+    "id": 5,
+    "phase": 3,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "limiting_factor": "None",
+      "order_id": 720575940379279360,
+      "output_quantity": 50,
+      "type": "ProductionResult",
+      "waste": 0
+    },
+    "day": 1,
+    "event_type": 205,
+    "id": 6,
+    "phase": 4,
+    "priority": 0,
+    "seq": 6
+  },
+  {
+    "data": {
+      "firm_id": 288230376151711744,
+      "total_cost": 50,
+      "type": "MonthlyMaintenanceDeclaration"
+    },
+    "day": 30,
+    "event_type": 206,
+    "id": 7,
+    "phase": 2,
+    "priority": 0,
+    "seq": 0
+  },
+  {
+    "data": {
+      "asset_id": 648518346341351424,
+      "capacity": 100,
+      "state": 0,
+      "type": "AssetStatus"
+    },
+    "day": 100,
+    "event_type": 207,
+    "id": 8,
+    "phase": 1,
+    "priority": 0,
+    "seq": 0
+  }
+]

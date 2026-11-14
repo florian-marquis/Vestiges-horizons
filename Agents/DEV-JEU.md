@@ -23,7 +23,7 @@ Dans cet ordre, uniquement les sections utiles à la tâche du jour :
 3. **Implémentation** selon les conventions déterministes (entiers/virgule fixe, pas de `HashMap` itéré, tirages à clé stable, ordonnancement canonique).
 4. **Tests headless obligatoires** avant de clore la tranche (conventions 7, 18, 19, 22, 23, 26) ; les tests de propriété et d'invariants tournent avec chaque changement concerné.
 5. **Observabilité entretenue avec le code** (convention 27) : pas de couche simulée sans son tableau de bord textuel ni ses séries.
-6. **Clôture** : mettre à jour `Docs/suivi du projet - todo.md` (et le registre de complétude si une entrée y correspond), committer.
+6. **Clôture** : mettre à jour `Docs/suivi du projet - todo.md` (et le registre de complétude si une entrée y correspond), **committer et pousser** selon les conventions 28-33.
 
 ## 3. Erreurs
 
