@@ -194,6 +194,57 @@
 | 18.3 | 8 | 8 | 0 | 0 | 100% |
 | **Total T6** | **26** | **25** | **1** | **0** | **96%** |
 
+---
+
+## Section 19 : Spécification de la tranche 7
+
+### 19.1 Panier et salaire réel
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Panier = nourriture + logement + eau + fiscalité | §19.1 | salary.rs | `test_panier_cout_total` | ✅ | |
+| Salaire réel = salaire × heures / coût panier | §19.1 | salary.rs | `test_salaire_reel_calcul` | ✅ | |
+| Exprimé en net | §19.1 | salary.rs | `test_salaire_reel_calcul` | ✅ | |
+
+### 19.2 Griefs
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| dG = 0.8·u + 0.2·p − 0.25·q | §19.2 | salary.rs | `test_griefs_dg_formula` | ✅ | |
+| Bornés [0, 100] | §19.2 | salary.rs | `test_t7_1_concordance_i8` | ✅ | G borné, pas dG |
+| Intégration événementielle | §19.2 | salary.rs | `test_t7_4_integration_evenementielle` | ✅ | |
+| Coefficients par jour, calibrage pluriannuel | §19.2 | salary.rs | `test_griefs_dg_formula` | ✅ | |
+
+### Tests de fermeture T7
+
+| Test | Description | Module | Statut | Notes |
+|------|-------------|--------|--------|-------|
+| T7.1 | Concordance - I8 vert à tolérance zéro | salary.rs | ✅ | `test_t7_1_concordance_i8` |
+| T7.2 | Choc 7 : prix nourriture +50% | salary.rs | ✅ | `test_t7_2_choc_7` |
+| T7.3 | Choc 11 complet : impôt ×2 pendant un an | salary.rs | ✅ | `test_t7_3_choc_11_complet` |
+| T7.4 | Intégration événementielle | salary.rs | ✅ | `test_t7_4_integration_evenementielle` |
+| T7.5 | Seuil de risque (entrées) | salary.rs | ✅ | `test_t7_5_seuil_risque` |
+
+---
+
+## Statistiques de couverture
+
+| Section | Total | ✅ Complète | ⚠️ Partielle | ❌ Aucune | % Couverture |
+|---------|-------|------------|--------------|-----------|--------------|
+| 17.1 | 7 | 6 | 2 | 0 | 86% |
+| 17.2 | 7 | 6 | 1 | 0 | 86% |
+| 17.3 | 9 | 7 | 1 | 1 | 78% |
+| 17.4 | 7 | 7 | 0 | 0 | 100% |
+| 17.5 | 10 | 9 | 0 | 1 | 90% |
+| **Total T5** | **40** | **35** | **4** | **1** | **88%** |
+| 18.1 | 7 | 7 | 0 | 0 | 100% |
+| 18.2 | 11 | 10 | 1 | 0 | 91% |
+| 18.3 | 8 | 8 | 0 | 0 | 100% |
+| **Total T6** | **26** | **25** | **1** | **0** | **96%** |
+| 19.1 | 3 | 3 | 0 | 0 | 100% |
+| 19.2 | 5 | 5 | 0 | 0 | 100% |
+| **Total T7** | **8** | **8** | **0** | **0** | **100%** |
+
 **Améliorations** :
 - ✅ Délai logistique (3-10 jours) : test_import_delay
 - ✅ Plafond +50% : test_reference_price_cap
@@ -249,3 +300,6 @@ Aucune - la couverture de la section 17.2 est maintenant à 86%
 | 2024-11-14 | Matrice | Ajout section 18 (Tranche 6) avec 26 éléments | Agent IA |
 | 2024-11-14 | T6.4 | Implémentation complète du parrainage (Maîtrise, peut_parrainer, test mis à jour) | Agent IA |
 | 2024-11-14 | T6.8 | Implémentation complète du goulot multi-postes (test enrichi avec 4 cas) | Agent IA |
+| 2024-11-14 | T7 | Création module salary.rs avec panier, salaire réel, griefs | Agent IA |
+| 2024-11-14 | T7 | Ajout tests T7.1-T7.5 (5 nouveaux tests) | Agent IA |
+| 2024-11-14 | Matrice | Ajout section 19 (Tranche 7) avec 8 éléments, 100% couverture | Agent IA |
