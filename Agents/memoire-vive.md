@@ -19,3 +19,10 @@ Règle d'admission (voir `Agents/PROTOCOLE-ERREURS.md`, sections 3 et 5) : une e
 - Origine : solutions.md P-1, session Tranche 1.
 
 <!-- Nouvelles entrées ici (info ou problème promu), format PROTOCOLE-ERREURS.md section 5 -->
+
+### T6 — Tranche 6 : Marché du travail implémentée
+- Info : La tranche 6 (marché du travail, métiers, parrainage) est implémentée dans `src/labor.rs` avec : Q(a) d'emploi modulée par les traits du décideur, engagement employé↔firme (0-1000), décisions ponctuelles (~1/mois), chocs 3 et 4, deux régimes (firme patiente vs firme au churn), transition du bouchon, présentéisme et contagion. Tous les tests T6.2-T6.7 passent (73 tests total dans labor.rs). Le benchmark P1 headless (10 ans, graine 42) valide tous les invariants.
+- Gain : Évite la re-lecture complète de la spec §18 et de la structure labor.rs pour les tâches T6. Référence rapide pour les prochaines implémentations.
+- Coût : ~200 tokens.
+- Origine : Session implémentation T6, commit 5bbdb2d.
+- Tests : 73 tests pass (cargo test), benchmark P1 valide (I2, I4, I5, I8, I9).
