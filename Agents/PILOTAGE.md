@@ -81,16 +81,19 @@ Lorsqu'un morceau de travail est jugé trop difficile à réaliser avec le modè
 
 Pendant le codage du jeu, **TOUTE réponse finale doit se terminer par une section explicite "Prochaine étape suggérée" ou "Suite du développement"**, même si la tâche est considérée comme complète. Une réponse sans cette section est considérée comme incomplète et doit être corrigée.
 
+**Continuation automatique** : L'agent **doit automatiquement continuer** sur les prochaines étapes logiques sans attendre d'intervention utilisateur, sauf si une décision de l'utilisateur est explicitement nécessaire (ex. : choix entre plusieurs options, validation d'un résultat critique, autorisation pour une action à blast radius).
+
 Cette section doit **toujours spécifier explicitement** :
 - La prochaine étape concrète à accomplir
 - **Si une nouvelle conversation est nécessaire ou si on reste dans la conversation actuelle** (ex: "→ On reste dans cette conv" ou "→ Ouvrir une nouvelle conv")
 
 Si une décision de l'utilisateur est nécessaire, **préciser systématiquement un choix suggéré** parmi les options présentées, avec justification en une phrase.
 
-**Test économique** : règle — gain estimé 60 tokens/session (évite les rappels utilisateur, les sessions bloquées et les ambiguïtés de conversation) vs coût 20 tokens → **G > C : oui**.
+**Test économique** : règle — gain estimé 70 tokens/session (évite les temps morts entre tâches, les rappels utilisateur, les sessions bloquées et les ambiguïtés) vs coût 20 tokens → **G > C : oui**.
 
 ## Historique
 
 - [initial] Création du système : routeur (`AGENTS.md`), `Agents/PILOTAGE.md`, `Agents/DEV-JEU.md`, `Agents/PROTOCOLE-ERREURS.md`, `Agents/solutions.md`, `Agents/memoire-vive.md`, `Agents/etat-mode.md`.
 - [2024-11-14] Renforcement de la section 8 : **Toute réponse finale doit se terminer par une section "Prochaine étape suggérée"**. Motif : règle existante violée (réponse sans suggestion). Test économique : gain 50 tokens/session vs coût 20 tokens.
 - [2024-11-14] Ajout à la section 8 : **spécification obligatoire du contexte de conversation** (nouvelle conv ou actuelle). Motif : ambiguïté sur la continuité des sessions. Test économique : gain 60 tokens/session vs coût 20 tokens.
+- [2024-11-14] Ajout à la section 8 : **continuation automatique** sans intervention utilisateur. Motif : optimisation du flux de travail. Test économique : gain 70 tokens/session vs coût 20 tokens.
