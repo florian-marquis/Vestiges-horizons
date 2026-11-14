@@ -81,11 +81,16 @@ Lorsqu'un morceau de travail est jugé trop difficile à réaliser avec le modè
 
 Pendant le codage du jeu, **TOUTE réponse finale doit se terminer par une section explicite "Prochaine étape suggérée" ou "Suite du développement"**, même si la tâche est considérée comme complète. Une réponse sans cette section est considérée comme incomplète et doit être corrigée.
 
+Cette section doit **toujours spécifier explicitement** :
+- La prochaine étape concrète à accomplir
+- **Si une nouvelle conversation est nécessaire ou si on reste dans la conversation actuelle** (ex: "→ On reste dans cette conv" ou "→ Ouvrir une nouvelle conv")
+
 Si une décision de l'utilisateur est nécessaire, **préciser systématiquement un choix suggéré** parmi les options présentées, avec justification en une phrase.
 
-**Test économique** : règle — gain estimé 50 tokens/session (évite les rappels utilisateur et les sessions bloquées) vs coût 20 tokens → **G > C : oui**.
+**Test économique** : règle — gain estimé 60 tokens/session (évite les rappels utilisateur, les sessions bloquées et les ambiguïtés de conversation) vs coût 20 tokens → **G > C : oui**.
 
 ## Historique
 
 - [initial] Création du système : routeur (`AGENTS.md`), `Agents/PILOTAGE.md`, `Agents/DEV-JEU.md`, `Agents/PROTOCOLE-ERREURS.md`, `Agents/solutions.md`, `Agents/memoire-vive.md`, `Agents/etat-mode.md`.
 - [2024-11-14] Renforcement de la section 8 : **Toute réponse finale doit se terminer par une section "Prochaine étape suggérée"**. Motif : règle existante violée (réponse sans suggestion). Test économique : gain 50 tokens/session vs coût 20 tokens.
+- [2024-11-14] Ajout à la section 8 : **spécification obligatoire du contexte de conversation** (nouvelle conv ou actuelle). Motif : ambiguïté sur la continuité des sessions. Test économique : gain 60 tokens/session vs coût 20 tokens.
