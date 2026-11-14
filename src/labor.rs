@@ -1101,32 +1101,55 @@ mod tests {
         assert!(!marche.peut_parrainer(filleul)); // Pas de maîtrise pour le filleul
     }
     
-    /// §34.4 T6.8 : Goulot multi-postes
+    /// §18.3 T6.8 : Goulot multi-postes
+    /// Test : restaurant avec cuisinier seul, puis cuisinier + serveur
+    /// → la production plafonne au min des capacités d'étage
+    /// → l'embauche du serveur débloque les couverts
+    /// → le goulot est nommé au journal (étage, amplitude)
     #[test]
     fn test_t6_8_goulot_multi_postes() {
         let mut marche = MarcheDuTravail::new();
         
-        // Créer une recette multi-postes
+        // Créer une recette multi-postes : restaurant
         let mut recette = RecetteMultiPostes::new(1);
         recette.ajouter_etage(100, 10); // Cuisinier : 10 plats/demi-journée
         recette.ajouter_etage(101, 15); // Serveur : 15 couverts/demi-journée
         marche.recettes.insert(1, recette);
         
-        // Aucun poste pourvu
+        // Cas 1 : Aucun poste pourvu → production = 0
         let mut postes_pourvus = BTreeMap::new();
-        let (production, _goulot) = marche.production_goulot(1, &postes_pourvus);
+        let (production, goulot) = marche.production_goulot(1, &postes_pourvus);
         assert_eq!(production, 0);
+        assert_eq!(goulot, None); // Aucun goulot identifié
         
-        // Cuisinier seul
+        // Cas 2 : Cuisinier seul → production = 0 (il manque le serveur)
+        // → pas de goulot car la production est bloquée par un poste non pourvu
         postes_pourvus.insert(100, true);
-        let (production, _goulot) = marche.production_goulot(1, &postes_pourvus);
-        assert_eq!(production, 0); // Il manque le serveur
+        let (production, goulot) = marche.production_goulot(1, &postes_pourvus);
+        assert_eq!(production, 0);
+        assert_eq!(goulot, None);
         
-        // Cuisinier + serveur
+        // Cas 3 : Cuisinier + serveur → production = min(10, 15) = 10
+        // → le goulot est le cuisinier (étage 100, amplitude 10)
         postes_pourvus.insert(101, true);
         let (production, goulot) = marche.production_goulot(1, &postes_pourvus);
-        assert_eq!(production, 10); // Goulot = cuisinier (10)
-        assert_eq!(goulot, Some((100, 10)));
+        assert_eq!(production, 10);
+        assert_eq!(goulot, Some((100, 10))); // Goulot nommé : étage 100, amplitude 10
+        
+        // Cas 4 : Vérifier que l'ajout d'un troisième étage avec capacité 5 crée un nouveau goulot
+        let mut recette_3_etages = RecetteMultiPostes::new(2);
+        recette_3_etages.ajouter_etage(200, 10);
+        recette_3_etages.ajouter_etage(201, 15);
+        recette_3_etages.ajouter_etage(202, 5); // Nouveau goulot
+        marche.recettes.insert(2, recette_3_etages);
+        
+        let mut postes_3_etages = BTreeMap::new();
+        postes_3_etages.insert(200, true);
+        postes_3_etages.insert(201, true);
+        postes_3_etages.insert(202, true);
+        let (production, goulot) = marche.production_goulot(2, &postes_3_etages);
+        assert_eq!(production, 5);
+        assert_eq!(goulot, Some((202, 5))); // Nouveau goulot : étage 202, amplitude 5
     }
     
     // ============================================================================

@@ -175,7 +175,7 @@
 | T6.5 | Deux régimes | labor.rs | ✅ | `test_t6_5_deux_regimes` |
 | T6.6 | Transition du bouchon | labor.rs | ✅ | `test_t6_6_bouchon_transition` |
 | T6.7 | Présentéisme et contagion | labor.rs | ✅ | `test_t6_7_presentesime_contagion` |
-| T6.8 | Goulot multi-postes | labor.rs | ❌ | À implémenter |
+| T6.8 | Goulot multi-postes | labor.rs | ✅ | `test_t6_8_goulot_multi_postes` |
 
 ---
 
@@ -191,8 +191,8 @@
 | **Total T5** | **40** | **35** | **4** | **1** | **88%** |
 | 18.1 | 7 | 7 | 0 | 0 | 100% |
 | 18.2 | 11 | 10 | 1 | 0 | 91% |
-| 18.3 | 8 | 7 | 0 | 1 | 88% |
-| **Total T6** | **26** | **24** | **1** | **1** | **92%** |
+| 18.3 | 8 | 8 | 0 | 0 | 100% |
+| **Total T6** | **26** | **25** | **1** | **0** | **96%** |
 
 **Améliorations** :
 - ✅ Délai logistique (3-10 jours) : test_import_delay
@@ -248,3 +248,4 @@ Aucune - la couverture de la section 17.2 est maintenant à 86%
 | 2024-11-14 | T6 | Ajout tests T6.2-T6.7 (7 nouveaux tests) | Agent IA |
 | 2024-11-14 | Matrice | Ajout section 18 (Tranche 6) avec 26 éléments | Agent IA |
 | 2024-11-14 | T6.4 | Implémentation complète du parrainage (Maîtrise, peut_parrainer, test mis à jour) | Agent IA |
+| 2024-11-14 | T6.8 | Implémentation complète du goulot multi-postes (test enrichi avec 4 cas) | Agent IA |
