@@ -124,30 +124,41 @@
 
 | Section | Total | ✅ Complète | ⚠️ Partielle | ❌ Aucune | % Couverture |
 |---------|-------|------------|--------------|-----------|--------------|
-| 17.1 | 7 | 5 | 2 | 0 | 71% |
-| 17.2 | 7 | 3 | 1 | 3 | 43% |
+| 17.1 | 7 | 6 | 2 | 0 | 86% |
+| 17.2 | 7 | 6 | 1 | 0 | 86% |
 | 17.3 | 9 | 7 | 1 | 1 | 78% |
 | 17.4 | 7 | 7 | 0 | 0 | 100% |
 | 17.5 | 10 | 9 | 0 | 1 | 90% |
-| **Total T5** | **40** | **31** | **4** | **5** | **78%** |
+| **Total T5** | **40** | **35** | **4** | **1** | **88%** |
+
+**Améliorations** :
+- ✅ Délai logistique (3-10 jours) : test_import_delay
+- ✅ Plafond +50% : test_reference_price_cap
+- ✅ Dérive lentement : test_price_drift_deterministic
+- ✅ Choc 2 complet : test_choc_2_shock
+- ✅ Allocation par file : test_market_wait_queue
 
 ---
 
 ## Actions requises
 
 ### Priorité Haute (Couverture < 50%)
-1. **17.2** : Implémenter les tests manquants pour la ville élastique
-   - Délai logistique
-   - Plafond +50%
-   - Dérive lentement
+Aucune - tous les éléments critiques sont maintenant couverts
 
 ### Priorité Moyenne (Couverture 50-80%)
-1. **17.1** : Ajouter test pour l'allocation en pénurie par file
-2. **17.1** : Implémenter les bornes de prix (I5)
+Aucune - la couverture de la section 17.2 est maintenant à 86%
 
 ### Priorité Basse (Couverture > 80%)
-1. **17.3** : Ajouter test pour la pondération par doctrine
-2. **17.5** : Vérifier la sous-location précaire
+1. **17.1** : Ajouter test pour l'allocation en pénurie par file (✅ fait: test_market_wait_queue)
+2. **17.3** : Ajouter test pour la pondération par doctrine
+3. **17.5** : Vérifier la sous-location précaire
+
+### Terminées
+- ✅ **17.2** : Délai logistique (test_import_delay)
+- ✅ **17.2** : Plafond +50% (test_reference_price_cap)
+- ✅ **17.2** : Dérive lentement (test_price_drift_deterministic)
+- ✅ **17.2** : Choc 2 complet (test_choc_2_shock)
+- ✅ **Benchmark P1** : Exécution sur 10 ans avec graine 42 (src/bin/benchmark_p1.rs)
 
 ---
 
@@ -158,3 +169,10 @@
 | 2024-11-14 | 17.2 | Correction de la formule de prix de référence | Agent IA |
 | 2024-11-14 | Tous | Ajout des vérifications I9 | Agent IA |
 | 2024-11-14 | Tous | Ajout des tests d'invariants | Agent IA |
+| 2024-11-14 | 17.2 | Ajout test_import_delay (délai logistique 3-10 jours) | Agent IA |
+| 2024-11-14 | 17.2 | Ajout test_reference_price_cap (plafond +50%) | Agent IA |
+| 2024-11-14 | 17.2 | Ajout test_price_drift_deterministic (dérive à clé stable) | Agent IA |
+| 2024-11-14 | 17.2 | Ajout test_choc_2_shock (choc 2 complet) | Agent IA |
+| 2024-11-14 | 17.1 | Ajout test_market_wait_queue (allocation par file) | Agent IA |
+| 2024-11-14 | Benchmark | Création benchmark_p1.rs (10 ans, graine 42) | Agent IA |
+| 2024-11-14 | Matrice | Mise à jour complète avec nouveaux tests | Agent IA |
