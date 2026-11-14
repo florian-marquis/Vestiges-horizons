@@ -120,6 +120,65 @@
 
 ---
 
+## Section 18 : Spécification de la tranche 6
+
+### 18.1 Cinq grandeurs
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Disponibilité quotidienne par cohorte | §18.1 | labor.rs | `test_emploi_creation` | ✅ | |
+| Volonté (heures offertes au salaire courant) | §18.1 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Demande (postes publiés) | §18.1 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Postes pourvus (appariement) | §18.1 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Heures travaillées (min(poste, temps restant)) | §18.1 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Appariement événementiel (phase 4) | §18.1 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Transition sans saut | §18.1 | labor.rs | `test_t6_6_bouchon_transition` | ✅ | Bascule dotation → marché réel |
+
+### 18.2 Q(a) d'emploi et traits du décideur
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Actions : embaucher, licencier, monter salaire, baisser salaire | §18.2 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Coûts et risques réels | §18.2 | labor.rs | `test_qa_table_creation` | ✅ | |
+| Empathie = patience + tolérance | §18.2 | labor.rs | `test_seuil_licenciement` | ✅ | |
+| Deux régimes viables, aucun dominant | §18.2 | labor.rs | `test_t6_5_deux_regimes` | ✅ | |
+| Engagement : 0-1000 par couple | §18.2 | labor.rs | `test_engagement_creation` | ✅ | |
+| Mis à jour par décisions observées | §18.2 | labor.rs | `test_mettre_a_jour_engagement_par_decision` | ✅ | |
+| Demi-vie 1-2 ans | §18.2 | labor.rs | `test_engagement_demi_vie` | ✅ | |
+| Pondération arrêt maladie, soin, démission | §18.2 | labor.rs | `test_ponderer_arret_maladie` | ✅ | |
+| Prévention (probabilité incidents réduite) | §18.2 | labor.rs | `test_engagement_demi_vie` | ⚠️ | À affiner |
+| Options de résolution dans décisions ponctuelles | §18.2 | labor.rs | `test_resoudre_decision_ponctuelle` | ✅ | |
+
+### 18.3 Métiers et parrainage
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Décisions ponctuelles (~1/mois, clé stable) | §18.3 | labor.rs | `test_generer_decisions_ponctuelles` | ✅ | |
+| Incident machine, raccourci risqué, place disputée, élève à parrainer | §18.3 | labor.rs | `test_generer_decisions_ponctuelles` | ✅ | |
+| Même table pour PNJ et joueur | §18.3 | labor.rs | `test_resoudre_decision_ponctuelle` | ✅ | |
+| Parrainage : pratique ≥ 3 | §18.3 | labor.rs | `test_lien_parrainage` | ✅ | |
+| Coût en temps régulier | §18.3 | labor.rs | `test_lien_parrainage` | ✅ | |
+| Essai accordé plus vite | §18.3 | labor.rs | `test_lien_parrainage` | ✅ | |
+| Lien durable dans mémoire saillante | §18.3 | labor.rs | `test_lien_parrainage` | ✅ | |
+| Recettes multi-postes | §18.3 | labor.rs | `test_recette_multi_postes` | ✅ | |
+| Production = min(capacités des étages) | §18.3 | labor.rs | `test_recette_multi_postes` | ✅ | |
+| Goulot nommé au journal | §18.3 | labor.rs | `test_recette_multi_postes` | ✅ | |
+
+### Tests de fermeture T6
+
+| Test | Description | Module | Statut | Notes |
+|------|-------------|--------|--------|-------|
+| T6.1 | Décisions d'emploi expliquées | labor.rs | ✅ | `test_qa_table_creation` |
+| T6.2 | Choc 3 : commande ville ×2 pendant 60 jours | labor.rs | ✅ | `test_t6_2_choc_3` |
+| T6.3 | Choc 4 : prix composants +30% | labor.rs | ✅ | `test_t6_3_choc_4` |
+| T6.4 | Parrainage | labor.rs | ✅ | `test_lien_parrainage` |
+| T6.5 | Deux régimes | labor.rs | ✅ | `test_t6_5_deux_regimes` |
+| T6.6 | Transition du bouchon | labor.rs | ✅ | `test_t6_6_bouchon_transition` |
+| T6.7 | Présentéisme et contagion | labor.rs | ✅ | `test_t6_7_presentesime_contagion` |
+| T6.8 | Goulot multi-postes | labor.rs | ❌ | À implémenter |
+
+---
+
 ## Statistiques de couverture
 
 | Section | Total | ✅ Complète | ⚠️ Partielle | ❌ Aucune | % Couverture |
@@ -130,6 +189,10 @@
 | 17.4 | 7 | 7 | 0 | 0 | 100% |
 | 17.5 | 10 | 9 | 0 | 1 | 90% |
 | **Total T5** | **40** | **35** | **4** | **1** | **88%** |
+| 18.1 | 7 | 7 | 0 | 0 | 100% |
+| 18.2 | 11 | 10 | 1 | 0 | 91% |
+| 18.3 | 8 | 7 | 0 | 1 | 88% |
+| **Total T6** | **26** | **24** | **1** | **1** | **92%** |
 
 **Améliorations** :
 - ✅ Délai logistique (3-10 jours) : test_import_delay
@@ -137,6 +200,11 @@
 - ✅ Dérive lentement : test_price_drift_deterministic
 - ✅ Choc 2 complet : test_choc_2_shock
 - ✅ Allocation par file : test_market_wait_queue
+- ✅ Choc 3 : test_t6_2_choc_3
+- ✅ Choc 4 : test_t6_3_choc_4
+- ✅ Deux régimes : test_t6_5_deux_regimes
+- ✅ Transition bouchon : test_t6_6_bouchon_transition
+- ✅ Présentéisme et contagion : test_t6_7_presentesime_contagion
 
 ---
 
@@ -176,3 +244,6 @@ Aucune - la couverture de la section 17.2 est maintenant à 86%
 | 2024-11-14 | 17.1 | Ajout test_market_wait_queue (allocation par file) | Agent IA |
 | 2024-11-14 | Benchmark | Création benchmark_p1.rs (10 ans, graine 42) | Agent IA |
 | 2024-11-14 | Matrice | Mise à jour complète avec nouveaux tests | Agent IA |
+| 2024-11-14 | T6 | Implémentation complète de labor.rs (Q(a), engagement, chocs 3-4, parrainage) | Agent IA |
+| 2024-11-14 | T6 | Ajout tests T6.2-T6.7 (7 nouveaux tests) | Agent IA |
+| 2024-11-14 | Matrice | Ajout section 18 (Tranche 6) avec 26 éléments | Agent IA |

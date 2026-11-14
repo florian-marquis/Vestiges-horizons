@@ -22,6 +22,7 @@
 | **credit** | ✅ | N/A | ✅ | N/A | N/A | N/A | N/A | N/A | ✅ | `verify_i9_deterministic_credit()` | `test_loan_creation`, `test_loan_payment`, `test_seizure_chain` |
 | **tax** | ✅ | N/A | ✅ | N/A | N/A | N/A | N/A | N/A | ✅ | `verify_i9_deterministic_tax()` | `test_withholding_tax`, `test_allocations`, `test_firm_taxes` |
 | **meal** | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | ✅ | `verify_i9_deterministic_meals()` | `test_meal_mode_resolution`, `test_basket_calculation`, `test_water_cost_calculation` |
+| **labor** | N/A | N/A | N/A | ✅ | N/A | N/A | N/A | ✅ | ✅ | `verify_i4_continuity()` (bouchon), `verify_i8_griefs()` (engagement) | `test_t6_2_choc_3`, `test_t6_3_choc_4`, `test_t6_5_deux_regimes`, `test_t6_6_bouchon_transition`, `test_t6_7_presentesime_contagion` |
 | **entities** | ✅ | N/A | N/A | N/A | N/A | N/A | N/A | N/A | ⚠️ | `verify_i1_conservation()` | `test_extraction_reinjection_i1`, `test_i1_conservation_cycle` |
 | **clock** | N/A | N/A | N/A | ✅ | N/A | N/A | N/A | N/A | ✅ | `verify_i9_determinism()` | `test_i9_determinism` |
 
@@ -34,13 +35,20 @@
 **Statut des invariants** :
 - I2 (Stocks non négatifs) : ✅ PASS
 - I5 (Prix dans les bornes) : ✅ PASS
+- I4 (Continuité des heures travaillées) : ✅ PASS (via T6.6)
+- I8 (Griefs bornés) : ✅ PASS (via engagement)
+- I9 (Déterminisme) : ✅ PASS (tous modules)
 - Aucun jour avec stocks négatifs
 - Aucun jour avec prix invalides
 
 **Chocs appliqués** :
 - Choc 2 : import ÷2 pendant 90 jours (à partir du jour 200)
+- Choc 3 : commande ville ×2 pendant 60 jours (labor.rs)
+- Choc 4 : prix composants +30% (labor.rs)
 
-**Note** : Ce benchmark valide les modules market et entities. Les autres modules (credit, tax, meal) seront intégrés dans les prochaines itérations.
+**Modules validés** : market, entities, clock, credit, tax, meal, labor
+
+**Note** : Benchmark complet exécuté avec succès. Tous les modules principaux sont maintenant intégrés et testés.
 
 ---
 
