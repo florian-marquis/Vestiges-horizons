@@ -12,7 +12,7 @@ Dans cet ordre, uniquement les sections utiles à la tâche du jour :
 
 ## 1. Sources de vérité
 
-- Design : `Docs/cadrage vestiges horizons - v7.7.md`. En silence sur un point, la spec de palier tranche ; en silence encore, l'agent propose et l'humain décide.
+- Design : `Docs/cadrage vestiges horizons - v7.8.md` (révision v7.8.1). En silence sur un point, la spec de palier tranche ; en silence encore, l'agent propose et l'humain décide.
 - Exécution : `Docs/Conventions du projet (pour agents).md` — déterminisme, tests, méthode de travail, observabilité. Non négociables.
 - État d'avancement : `Docs/suivi du projet - todo.md` et `Docs/registre de completude.md`.
 

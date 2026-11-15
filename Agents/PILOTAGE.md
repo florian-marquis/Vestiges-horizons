@@ -15,7 +15,7 @@ Ce fichier s'applique en mode PILOTAGE (voir `AGENTS.md`, section 2). Le projet 
 ## 2. Processus par changement d'instruction
 
 1. **Motif explicite** : chaque changement d'instruction part d'un problème observé (erreur répétée, friction, ambiguïté) ou d'une demande de l'utilisateur, jamais d'une amélioration spéculative.
-2. **Cohérence avant écriture** : vérifier que la nouvelle règle ne contredit **ni le cadrage (`Docs/cadrage vestiges horizons - v7.7.md`)**, ni la hiérarchie de `AGENTS.md` section 3, ni les instructions système critiques de l'agent, ni une convention existante. En cas de conflit avec le cadrage, **la règle est rejetée ou reformulée pour être compatible**. Une dérogation explicite doit être validée par l’humain et documentée dans le cadrage. En cas de conflit entre autres règles : le résoudre d'abord, ou expliciter la préséance dans le texte.
+2. **Cohérence avant écriture** : vérifier que la nouvelle règle ne contredit **ni le cadrage (`Docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)**, ni la hiérarchie de `AGENTS.md` section 3, ni les instructions système critiques de l'agent, ni une convention existante. En cas de conflit avec le cadrage, **la règle est rejetée ou reformulée pour être compatible**. Une dérogation explicite doit être validée par l’humain et documentée dans le cadrage. En cas de conflit entre autres règles : le résoudre d'abord, ou expliciter la préséance dans le texte.
 3. **Forme canonique d'une règle** : impérative, testable (on peut dire quand elle est violée), bornée (elle dit quand elle ne s'applique pas), sans doublon d'une règle existante.
 4. **Versionnement additif** : les conventions se numérotent à la suite (le prochain numéro libre de `Conventions du projet (pour agents).md`), avec intitulé de version et date en sous-titre de groupe. Une règle existante se corrige en la remplaçant, pas en la contredisant ailleurs.
 5. **Retour d'expérience** : toute friction constatée lors de l'application des instructions (règle ignorée, interprétations divergentes, coût excessif) est un motif de changement recevable ; la révision passe par ce processus.
@@ -28,7 +28,7 @@ Ce fichier s'applique en mode PILOTAGE (voir `AGENTS.md`, section 2). Le projet 
 - **Règle proposée** : [Texte exact de la nouvelle règle, format impératif]
 - **Test économique** : gain estimé = [X tokens/session], coût = [Y tokens] → **G > C ?** (oui/non)
 - **Vérification de cohérence** :
-  - [ ] Compatible avec le cadrage (`Docs/cadrage vestiges horizons - v7.7.md`)
+  - [ ] Compatible avec le cadrage (`Docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)
   - [ ] Compatible avec les conventions existantes
   - [ ] Pas de doublon avec une règle existante
 - **Impact** : [Fichiers/modules concernés]

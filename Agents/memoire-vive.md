@@ -5,7 +5,7 @@ Règle d'admission (voir `Agents/PROTOCOLE-ERREURS.md`, sections 3 et 5) : une e
 ---
 
 ### Économie de re-lecture des documents de référence
-- Info : le routeur `AGENTS.md` section 3 fixe la hiérarchie (cadrage v7.7 > conventions > spec de palier > dossier Agents). Les conventions (27 règles, ~1 200 tokens) tiennent en mémoire de travail dès le début d'une session de code ; le cadrage de 6 000+ tokens se lit **par section ciblée uniquement** (recherche par titre de chapitre, jamais lecture intégrale pour une tâche ponctuelle).
+- Info : le routeur `AGENTS.md` section 3 fixe la hiérarchie (cadrage v7.8/v7.8.1 > conventions > spec de palier > dossier Agents). Les conventions (27 règles, ~1 200 tokens) tiennent en mémoire de travail dès le début d'une session de code ; le cadrage de 6 000+ tokens se lit **par section ciblée uniquement** (recherche par titre de chapitre, jamais lecture intégrale pour une tâche ponctuelle).
 - Gain : ~6 000 tokens par tâche (pas de re-lecture intégrale du cadrage), suppression des hésitations sur la préséance des docs.
 - Coût : ~120 tokens (cette entrée).
 - Origine : AGENTS.md, PILOTAGE.md.
@@ -27,16 +27,14 @@ Règle d'admission (voir `Agents/PROTOCOLE-ERREURS.md`, sections 3 et 5) : une e
 - Origine : Session implémentation T6, commit 5bbdb2d.
 - Tests : 73 tests pass (cargo test), benchmark P1 valide (I2, I4, I5, I8, I9).
 
-### T7 — Tranche 7 : Salaires réels et griefs implémentée
-- Info : La tranche 7 (panier, salaire réel, griefs) est implémentée dans `src/salary.rs` avec : calcul du panier (nourriture, logement, eau, fiscalité), salaire réel = (salaire_horaire × heures / coût_panier) × 100, intégration événementielle des griefs (dG = 0.8·u + 0.2·p − 0.25·q), équation de griefs bornée [0, 100], taux de risque fonction de G et salaire réel. Tous les tests T7.1-T7.7 passent (7 tests). L'invariant I8 (concordance griefs cohorte/individus) est implémenté à tolérance zéro dans `src/entities.rs`.
-- Gain : Évite la re-lecture de la spec §19. Permet de passer à T8 (basculements) qui dépend de T7.
-- Coût : ~150 tokens.
-- Origine : Session implémentation T7, commit 85af42a.
-- Tests : 7 tests pass (cargo test), I8 vert.
+### T7 — Tranche 7 : implémentation existante, correctif requis
+- Info : `src/salary.rs` contient l'ancienne équation (0.8·u + 0.2·p − 0.25·q) et met à jour les griefs par appel, avec bornage [0, 100] ; ce comportement implémenté ne correspond pas au calibrage de référence du cadrage v7.8/v7.8.1 (0.09·u + 0.02·p − 0.03·q, u/p/q sur [0,1], intégration événementielle). `verify_i8_concordance` dans `src/entities.rs` utilise une moyenne entière et n'assure pas la concordance pour les cohortes non divisibles ; ne pas considérer I8 comme fermé.
+- Gain : évite de confondre les tests de l'ancienne implémentation avec les critères de design lors du correctif T7-T8.
+- Coût : ~100 tokens.
+- Origine : diagnostic T7-T8 v3.1 et cadrage v7.8.
 
-### T8 — Tranche 8 : Basculements implémentée
-- Info : La tranche 8 (seuil de risque cumulé, grève) est implémentée dans `src/strike.rs` avec : gestion des grèves (Strike, StrikeManager), tirage unique par clé stable (décision 43, jamais re-tirable), planification du franchissement du seuil, fin de grève par concession (Q(a)) ou durée écoulée. Tous les tests T8.1-T8.5 passent (9 tests). Le déterminisme est validé (même graine → même date de grève).
-- Gain : Fermeture du noyau réductible P1 (T1-T8). Prêt pour T9 (vie sociale) ou la suite headless T10.
-- Coût : ~150 tokens.
-- Origine : Session implémentation T8, commit 85af42a.
-- Tests : 9 tests pass (cargo test), déterminisme validé (T8.5).
+### T8 — Tranche 8 : implémentation existante, intégration à corriger
+- Info : `src/strike.rs` contient un gestionnaire de grèves et des tests de déterminisme, mais le diagnostic T7-T8 v3.1 relève que le déclenchement actuel n'est pas planifié dans la file d'événements et que les replais T1-T5 ne couvrent pas T7-T8. Les tests existants ne ferment donc pas à eux seuls le contrat du cadrage v7.8/v7.8.1.
+- Gain : évite de traiter les tests unitaires existants comme preuve de fermeture du basculement T8.
+- Coût : ~75 tokens.
+- Origine : diagnostic T7-T8 v3.1 et cadrage v7.8.

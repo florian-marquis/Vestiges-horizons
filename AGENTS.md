@@ -26,7 +26,7 @@ Ce fichier est le point d'entrée unique des agents IA travaillant dans ce dép�
 ## 3. Hiérarchie des documents de référence (mode JEU)
 
 En cas de conflit, dans l'ordre décroissant :
-1. Le cadrage `Docs/cadrage vestiges horizons - v7.7.md` (source de vérité du design)
+1. Le cadrage `Docs/cadrage vestiges horizons - v7.8.md` (source de vérité du design, révision v7.8.1)
 2. Les `Docs/Conventions du projet (pour agents).md` (règles d'exécution)
 3. La spécification du palier en cours (`Docs/spec P1 - quartier vivant.md`, puis les suivantes)
 4. Les instructions du dossier `Agents/`
