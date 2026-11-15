@@ -3,7 +3,7 @@
 //! Implémente :
 //! - Panier (nourriture + logement + eau + fiscalité)
 //! - Salaire réel = salaire horaire × heures travaillées / coût du panier
-//! - Griefs : dG = 0.8·u + 0.2·p − 0.25·q (points/jour, bornés [0, 100])
+//! - Griefs : dG = 0.09·u + 0.02·p − 0.03·q (points/jour, bornés [0, 100])
 //! - Intégration événementielle des griefs
 //! 
 //! §19 : Spécification de la tranche 7
@@ -11,6 +11,8 @@
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
 use crate::entities::EntityId;
+use crate::{Event, EventData, Timestamp, EVENT_TYPE_INPUT_CHANGED};
+pub use crate::griefs::{GriefEntree, GriefsError, GriefsState};
 
 /// Composantes du panier
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,8 +65,6 @@ pub enum PanierComposante {
 /// Salaire réel et griefs pour une entité (individu ou cohorte)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SalaireReelEtGriefs {
-    /// Entité concernée (individu ou cohorte)
-    pub entite: EntityId,
     /// Salaire horaire (en centimes)
     pub salaire_horaire: u64,
     /// Heures travaillées par jour
@@ -74,14 +74,8 @@ pub struct SalaireReelEtGriefs {
     /// Salaire réel (salaire × heures / coût panier)
     /// Exprimé en pourcentage : (salaire_horaire * heures / cout_panier) * 100
     pub salaire_reel: u64,
-    /// Griefs cumulés (0-100)
-    pub griefs: i64,
-    /// u : part des besoins alimentaires non satisfaits (0-1000)
-    pub u: i64,
-    /// p : pression des prix (0-1000)
-    pub p: i64,
-    /// q : qualité effective (0-1000)
-    pub q: i64,
+    /// État canonique de griefs, partagé par tous les calculs T7
+    pub griefs: GriefsState,
     /// Taux de risque cumulé (0-100)
     pub taux_risque: i64,
     /// Seuil de risque (0-100)
@@ -93,15 +87,11 @@ pub struct SalaireReelEtGriefs {
 impl SalaireReelEtGriefs {
     pub fn new(entite: EntityId) -> Self {
         SalaireReelEtGriefs {
-            entite,
             salaire_horaire: 0,
             heures_travaillees: 0,
             cout_panier: 0,
             salaire_reel: 0,
-            griefs: 0,
-            u: 0,
-            p: 0,
-            q: 0,
+            griefs: GriefsState::new(entite),
             taux_risque: 0,
             seuil_risque: 50, // Seuil par défaut
             date_franchissement: None,
@@ -123,33 +113,41 @@ impl SalaireReelEtGriefs {
         self.salaire_reel = numerator / self.cout_panier;
     }
     
-    /// Calcule dG (variation des griefs)
-    /// Formule : dG = 0.8·u + 0.2·p − 0.25·q
-    /// dG peut être négatif (qualité améliore → griefs diminuent)
-    /// Intégration événementielle : appelé quand une entrée change
+    /// Calcule la pente en micro-points de griefs par jour.
     pub fn calculer_dg(&self) -> i64 {
-        // Calcul en entiers (échelle 1000)
-        // dG = (800*u + 200*p - 250*q) / 1000
-        (800 * self.u + 200 * self.p - 250 * self.q) / 1000
+        self.griefs.slope_micro_points_per_day()
     }
     
-    /// Met à jour les griefs avec intégration événementielle
-    /// G (griefs cumulés) est borné à [0, 100]
-    pub fn mettre_a_jour_griefs(&mut self) {
-        let dg = self.calculer_dg();
-        // Intégration : griefs += dG, borné à [0, 100]
-        self.griefs = (self.griefs + dg).clamp(0, 100);
-    }
-    
-    /// Met à jour une entrée (u, p ou q) et recalcule les griefs
-    pub fn mettre_a_jour_entree(&mut self, entree: GriefEntree, valeur: i64) {
-        match entree {
-            GriefEntree::U => self.u = valeur,
-            GriefEntree::P => self.p = valeur,
-            GriefEntree::Q => self.q = valeur,
-        }
-        self.mettre_a_jour_griefs();
+    /// Avance les griefs jusqu'à l'horodatage logique.
+    pub fn mettre_a_jour_griefs(&mut self, timestamp: Timestamp) -> Result<(), GriefsError> {
+        self.griefs.advance_to(timestamp)?;
         self.calculer_taux_risque();
+        Ok(())
+    }
+    
+    /// Avance l'état avec les anciennes entrées, puis applique la nouvelle valeur.
+    pub fn mettre_a_jour_entree(
+        &mut self,
+        entree: GriefEntree,
+        valeur: i64,
+        timestamp: Timestamp,
+    ) -> Result<(), GriefsError> {
+        self.griefs.set_input_at(entree, valeur, timestamp)?;
+        self.calculer_taux_risque();
+        Ok(())
+    }
+
+    /// Applique atomiquement les trois entrées à leur horodatage.
+    pub fn mettre_a_jour_entrees(
+        &mut self,
+        u: u16,
+        p: u16,
+        q: u16,
+        timestamp: Timestamp,
+    ) -> Result<(), GriefsError> {
+        self.griefs.set_inputs_at(u, p, q, timestamp)?;
+        self.calculer_taux_risque();
+        Ok(())
     }
     
     /// Calcule le taux de risque (fonction de G, salaire réel, moyens de la cohorte)
@@ -159,7 +157,7 @@ impl SalaireReelEtGriefs {
         // Plus le salaire réel est bas, plus le taux de risque est élevé
         // G est en [0, 100], salaire_reel est en pourcentage
         let salaire_factor = (100i64 - (self.salaire_reel / 10) as i64).max(0);
-        self.taux_risque = (self.griefs + salaire_factor).clamp(0, 100);
+        self.taux_risque = (self.griefs.griefs_points() + salaire_factor).clamp(0, 100);
         
         // Vérifier si le seuil est franchi
         if self.taux_risque >= self.seuil_risque {
@@ -179,14 +177,6 @@ impl SalaireReelEtGriefs {
         self.seuil_risque = seuil.clamp(0, 100);
         self.calculer_taux_risque();
     }
-}
-
-/// Type d'entrée pour le calcul des griefs
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum GriefEntree {
-    U, // Besoins alimentaires non satisfaits
-    P, // Pression des prix
-    Q, // Qualité effective
 }
 
 /// Gestionnaire des salaires réels et griefs
@@ -242,9 +232,53 @@ impl SalaireReelEtGriefsManager {
     }
     
     /// Met à jour une entrée de griefs pour une entité
-    pub fn mettre_a_jour_entree_griefs(&mut self, entite: EntityId, entree: GriefEntree, valeur: i64) {
-        if let Some(e) = self.entites.get_mut(&entite) {
-            e.mettre_a_jour_entree(entree, valeur);
+    pub fn mettre_a_jour_entree_griefs(
+        &mut self,
+        entite: EntityId,
+        entree: GriefEntree,
+        valeur: i64,
+        timestamp: Timestamp,
+    ) -> Result<(), GriefsError> {
+        let e = self
+            .entites
+            .get_mut(&entite)
+            .ok_or(GriefsError::UnknownEntity(entite))?;
+        e.mettre_a_jour_entree(entree, valeur, timestamp)
+    }
+
+    pub fn mettre_a_jour_entrees_griefs(
+        &mut self,
+        entite: EntityId,
+        u: u16,
+        p: u16,
+        q: u16,
+        timestamp: Timestamp,
+    ) -> Result<(), GriefsError> {
+        let e = self
+            .entites
+            .get_mut(&entite)
+            .ok_or(GriefsError::UnknownEntity(entite))?;
+        e.mettre_a_jour_entrees(u, p, q, timestamp)
+    }
+
+    pub fn appliquer_evenement(&mut self, event: &Event) -> Result<(), GriefsError> {
+        if event.event_type != EVENT_TYPE_INPUT_CHANGED {
+            return Err(GriefsError::UnsupportedEvent);
+        }
+        match &event.data {
+            EventData::InputChanged {
+                entity_id,
+                u,
+                p,
+                q,
+            } => self.mettre_a_jour_entrees_griefs(
+                *entity_id,
+                *u,
+                *p,
+                *q,
+                event.timestamp,
+            ),
+            _ => Err(GriefsError::UnsupportedEvent),
         }
     }
     
@@ -254,8 +288,18 @@ impl SalaireReelEtGriefsManager {
     }
     
     /// Obtient les griefs d'une entité
+    /// Retourne leur projection entière en points; utiliser `get_griefs_micro_points`
+    /// pour conserver la précision sous-point.
     pub fn get_griefs(&self, entite: EntityId) -> Option<i64> {
-        self.entites.get(&entite).map(|e| e.griefs)
+        self.entites
+            .get(&entite)
+            .map(|e| e.griefs.griefs_points())
+    }
+
+    pub fn get_griefs_micro_points(&self, entite: EntityId) -> Option<i64> {
+        self.entites
+            .get(&entite)
+            .map(|e| e.griefs.griefs_micro_points())
     }
 }
 
@@ -308,9 +352,9 @@ mod tests {
         manager.mettre_a_jour_heures(entite, 8);
         
         // Mettre à jour entrées de griefs (valeurs normales)
-        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::U, 100);
-        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::P, 200);
-        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::Q, 300);
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::U, 100, Timestamp::new(0, 0)).unwrap();
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::P, 200, Timestamp::new(0, 0)).unwrap();
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::Q, 300, Timestamp::new(0, 0)).unwrap();
         
         // Vérifier que les griefs sont dans [0, 100]
         let griefs = manager.get_griefs(entite).unwrap();
@@ -345,33 +389,21 @@ mod tests {
         assert!(salaire_reel_apres < salaire_reel_initial);
         
         // Mettre à jour p (pression des prix monte)
-        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::P, 500);
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::P, 500, Timestamp::new(0, 0)).unwrap();
+        manager.entites.get_mut(&entite).unwrap()
+            .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
         
         // Griefs doivent monter (p a augmenté)
-        let griefs = manager.get_griefs(entite).unwrap();
+        let griefs = manager.get_griefs_micro_points(entite).unwrap();
         assert!(griefs > 0);
     }
     
     #[test]
-    fn test_griefs_dg_formula() {
-        // Tester la formule dG = 0.8*u + 0.2*p - 0.25*q
-        let mut sr = SalaireReelEtGriefs::new(EntityId::new(crate::entities::EntityType::Cohort, 1));
-        
-        // u=100, p=100, q=100 → dG = 80 + 20 - 25 = 75
-        sr.u = 100; sr.p = 100; sr.q = 100;
-        assert_eq!(sr.calculer_dg(), 75);
-        
-        // u=200, p=100, q=100 → dG = 160 + 20 - 25 = 155
-        sr.u = 200; sr.p = 100; sr.q = 100;
-        assert_eq!(sr.calculer_dg(), 155);
-        
-        // u=200, p=100, q=500 → dG = 160 + 20 - 125 = 55
-        sr.q = 500;
-        assert_eq!(sr.calculer_dg(), 55);
-        
-        // u=200, p=100, q=800 → dG = 160 + 20 - 200 = -20
-        sr.q = 800;
-        assert_eq!(sr.calculer_dg(), -20);
+    fn test_griefs_slope_conversion() {
+        let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
+        let mut sr = SalaireReelEtGriefs::new(entite);
+        sr.mettre_a_jour_entrees(1_000, 0, 0, Timestamp::new(0, 0)).unwrap();
+        assert_eq!(sr.calculer_dg(), 90_000);
     }
     
     /// §19.2 T7.3 : Choc 11 complet - impôt ×2 pendant un an
@@ -392,13 +424,9 @@ mod tests {
         manager.mettre_a_jour_salaire_horaire(entite, 1000);
         manager.mettre_a_jour_heures(entite, 8);
         
-        // Entrées initiales (valeurs normales)
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.u = 100; // Besoins alimentaires non satisfaits
-            e.p = 100; // Pression des prix
-            e.q = 500; // Qualité effective
-            e.mettre_a_jour_griefs();
-        }
+        manager.mettre_a_jour_entrees_griefs(entite, 100, 100, 0, Timestamp::new(0, 0)).unwrap();
+        manager.entites.get_mut(&entite).unwrap()
+            .mettre_a_jour_griefs(Timestamp::new(1_000, 0)).unwrap();
         
         let griefs_initial = manager.get_griefs(entite).unwrap();
         let salaire_reel_initial = manager.get_salaire_reel(entite).unwrap();
@@ -412,10 +440,9 @@ mod tests {
         assert!(salaire_reel_apres < salaire_reel_initial);
         
         // Mettre à jour p (pression des prix monte à cause du choc fiscal)
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.p = 300; // Pression des prix augmentée
-            e.mettre_a_jour_griefs();
-        }
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::P, 300, Timestamp::new(1_000, 0)).unwrap();
+        manager.entites.get_mut(&entite).unwrap()
+            .mettre_a_jour_griefs(Timestamp::new(2_000, 0)).unwrap();
         
         let griefs_apres = manager.get_griefs(entite).unwrap();
         
@@ -424,14 +451,13 @@ mod tests {
         
         // Vérifier que les griefs sont traçables : on peut retrouver u, p, q
         if let Some(e) = manager.entites.get(&entite) {
-            assert_eq!(e.u, 100);
-            assert_eq!(e.p, 300);
-            assert_eq!(e.q, 500);
+            assert_eq!(e.griefs.u(), 100);
+            assert_eq!(e.griefs.p(), 300);
+            assert_eq!(e.griefs.q(), 0);
         }
     }
     
-    /// §19.2 T7.4 : Intégration événementielle
-    /// G est mis à jour à chaque changement d'entrée, résultat identique à l'intégration continue
+    /// §19.2 T7.4 : l'état est avancé jusqu'à chaque changement d'entrée.
     #[test]
     fn test_t7_4_integration_evenementielle() {
         let mut manager = SalaireReelEtGriefsManager::new();
@@ -439,52 +465,17 @@ mod tests {
         let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
         manager.ajouter_entite(entite);
         
-        // Initialisation de toutes les entrées en une seule opération
-        // Pour éviter le problème où chaque mise à jour écrase les autres
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.u = 100;
-            e.p = 100;
-            e.q = 100;
-            e.mettre_a_jour_griefs();
-        }
-        
-        let griefs_1 = manager.get_griefs(entite).unwrap();
-        // griefs_1 = dG(100,100,100) = 0.8*100 + 0.2*100 - 0.25*100 = 75
-        assert_eq!(griefs_1, 75);
-        
-        // Changer u (besoins non satisfaits augmente)
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.u = 200;
-            e.mettre_a_jour_griefs();
-        }
-        
-        let griefs_2 = manager.get_griefs(entite).unwrap();
-        // griefs_2 = 75 + dG(200,100,100) = 75 + (0.8*200 + 0.2*100 - 0.25*100) = 75 + 155 = 230 → clampé à 100
-        assert_eq!(griefs_2, 100);
-        assert!(griefs_2 > griefs_1);
-        
-        // Changer q (qualité améliore)
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.q = 500;
-            e.mettre_a_jour_griefs();
-        }
-        
-        let griefs_3 = manager.get_griefs(entite).unwrap();
-        // griefs_3 = 100 + dG(200,100,500) = 100 + (0.8*200 + 0.2*100 - 0.25*500) = 100 + (160+20-125) = 100 + 55 = 155 → clampé à 100
-        // Donc griefs_3 reste à 100
-        assert_eq!(griefs_3, 100);
-        // Mais on peut vérifier que si on diminue encore plus q, les griefs baissent
-        
-        // Changer q à 800 (très haute qualité)
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.q = 800;
-            e.mettre_a_jour_griefs();
-        }
-        
-        let griefs_4 = manager.get_griefs(entite).unwrap();
-        // Avec u=200, p=100, q=800: dG = 0.8*200 + 0.2*100 - 0.25*800 = 160+20-200 = -20
-        // griefs_4 = 100 + (-20) = 80 (dans les bornes)
-        assert!(griefs_4 < griefs_2);
+        manager.mettre_a_jour_entrees_griefs(entite, 1_000, 250, 0, Timestamp::new(0, 0)).unwrap();
+        manager.entites.get_mut(&entite).unwrap()
+            .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(95_000));
+
+        manager.mettre_a_jour_entree_griefs(entite, GriefEntree::U, 0, Timestamp::new(1, 2)).unwrap();
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(142_500));
+
+        manager.entites.get_mut(&entite).unwrap()
+            .mettre_a_jour_griefs(Timestamp::new(2, 0)).unwrap();
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(145_000));
     }
     
     /// §19.2 T7.5 : Seuil de risque (entrées)
@@ -507,20 +498,14 @@ mod tests {
         manager.mettre_a_jour_salaire_horaire(entite, 5000); // Salaire élevé
         manager.mettre_a_jour_heures(entite, 8);
         
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.u = 0; e.p = 0; e.q = 1000; // Qualité parfaite
-            e.calculer_taux_risque();
-        }
+        manager.mettre_a_jour_entrees_griefs(entite, 0, 0, 1_000, Timestamp::new(0, 0)).unwrap();
         
         assert!(!manager.entites[&entite].seuil_franchi());
         
         // Cas 2 : Salaire réel bas, griefs élevés → seuil franchi
         manager.mettre_a_jour_salaire_horaire(entite, 500); // Salaire bas
         
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.u = 500; e.p = 500; e.q = 0; // Qualité mauvaise
-            e.calculer_taux_risque();
-        }
+        manager.mettre_a_jour_entrees_griefs(entite, 500, 500, 0, Timestamp::new(0, 0)).unwrap();
         
         assert!(manager.entites[&entite].seuil_franchi());
     }

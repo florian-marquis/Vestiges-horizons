@@ -25,6 +25,7 @@ pub mod credit;
 pub mod tax;
 pub mod meal;
 pub mod labor;
+pub mod griefs;
 pub mod salary;
 pub mod strike;
 pub mod replai_gen;
@@ -47,7 +48,8 @@ impl Id {
     }
 }
 
-/// Horodatage logique : (jour, index de séquence)
+/// Horodatage logique : (jour, créneau/index de séquence).
+/// Dans P1, les créneaux valides sont 0 à 3.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Timestamp {
     pub day: i64,
@@ -124,6 +126,7 @@ impl Priority {
 
 /// Type d'événement (à étendre par tranche)
 pub type EventType = u16;
+pub const EVENT_TYPE_INPUT_CHANGED: EventType = 70;
 
 /// Événement du noyau temporel
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,6 +148,13 @@ pub enum EventData {
     CreateEntity { entity_type: String, entity_id: Id },
     /// Mise à jour d'état
     UpdateState { field: String, old_value: i64, new_value: i64 },
+    /// Changement des entrées agrégées de griefs d'une cohorte
+    InputChanged {
+        entity_id: entities::EntityId,
+        u: u16,
+        p: u16,
+        q: u16,
+    },
 }
 
 impl Event {
@@ -167,10 +177,11 @@ impl Event {
         }
     }
     
-    /// Ordre canonique : jour -> phase -> priorité -> id
-    pub fn canonical_order(&self) -> (i64, u8, u8, u64) {
+    /// Ordre canonique : jour -> créneau -> phase -> priorité -> id
+    pub fn canonical_order(&self) -> (i64, u32, u8, u8, u64) {
         (
             self.timestamp.day,
+            self.timestamp.seq,
             self.phase as u8,
             self.priority.0,
             self.id.as_u64(),
@@ -210,8 +221,8 @@ impl Ord for Event {
 pub struct EventQueue {
     /// Compteur global pour les ids d'événements
     next_event_id: u64,
-    /// File principale : BTreeMap triée par (jour, phase, priorité, id)
-    queue: BTreeMap<(i64, u8, u8, u64), Event>,
+    /// File principale : BTreeMap triée par (jour, créneau, phase, priorité, id)
+    queue: BTreeMap<(i64, u32, u8, u8, u64), Event>,
 }
 
 impl EventQueue {
@@ -238,8 +249,28 @@ impl EventQueue {
     
     /// Ajoute un événement avec génération d'id automatique.
     pub fn push_with_id(&mut self, day: i64, phase: Phase, priority: Priority, event_type: EventType, data: EventData) -> Id {
+        self.push_at_with_id(Timestamp::new(day, 0), phase, priority, event_type, data)
+    }
+
+    /// Ajoute un événement à un horodatage logique précis.
+    pub fn push_at_with_id(
+        &mut self,
+        timestamp: Timestamp,
+        phase: Phase,
+        priority: Priority,
+        event_type: EventType,
+        data: EventData,
+    ) -> Id {
         let id = self.next_id();
-        let event = Event::new(id, day, 0, phase, priority, event_type, data);
+        let event = Event::new(
+            id,
+            timestamp.day,
+            timestamp.seq,
+            phase,
+            priority,
+            event_type,
+            data,
+        );
         self.push(event);
         id
     }
@@ -322,6 +353,19 @@ impl SimulationState {
         data: EventData,
     ) -> Id {
         self.event_queue.push_with_id(day, phase, priority, event_type, data)
+    }
+
+    /// Planifie un événement à un créneau précis de la journée.
+    pub fn schedule_at(
+        &mut self,
+        timestamp: Timestamp,
+        phase: Phase,
+        priority: Priority,
+        event_type: EventType,
+        data: EventData,
+    ) -> Id {
+        self.event_queue
+            .push_at_with_id(timestamp, phase, priority, event_type, data)
     }
 }
 

@@ -8,6 +8,7 @@
 use vestiges_horizons::{
     salary::*,
     entities::*,
+    Event, EventData, EventQueue, Id, Phase, Priority, Timestamp, EVENT_TYPE_INPUT_CHANGED,
 };
 
 // ============================================================================
@@ -103,9 +104,11 @@ fn test_t7_2_choc_7() {
         "T7.2 : salaire réel doit baisser après hausse des prix");
     
     // Mettre à jour p (pression des prix) - monte car le coût a augmenté
-    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::P, 500);
+    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::P, 500, Timestamp::new(0, 0)).unwrap();
+    manager.entites.get_mut(&entity_id).unwrap()
+        .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
     
-    let griefs_apres = manager.get_griefs(entity_id).unwrap();
+    let griefs_apres = manager.get_griefs_micro_points(entity_id).unwrap();
     assert!(griefs_apres > 0, "T7.2 : griefs doivent augmenter avec la pression des prix");
 }
 
@@ -134,7 +137,7 @@ fn test_t7_3_choc_11_complet() {
     let salaire_reel_initial = manager.get_salaire_reel(entity_id).unwrap();
     
     // Lire griefs avant le choc
-    let griefs_initial = manager.get_griefs(entity_id).unwrap();
+    let griefs_initial = manager.get_griefs_micro_points(entity_id).unwrap();
     
     // Appliquer choc 11 : impôt ×2 → fiscalité = 600
     manager.mettre_a_jour_panier(PanierComposante::Fiscalite, 600);
@@ -146,9 +149,11 @@ fn test_t7_3_choc_11_complet() {
         "T7.3 : salaire réel baisse après hausse de l'impôt");
     
     // Mettre à jour p (pression des prix) - augmente à cause du choc fiscal
-    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::P, 300);
+    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::P, 300, Timestamp::new(0, 0)).unwrap();
+    manager.entites.get_mut(&entity_id).unwrap()
+        .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
     
-    let griefs_apres = manager.get_griefs(entity_id).unwrap();
+    let griefs_apres = manager.get_griefs_micro_points(entity_id).unwrap();
     
     // Griefs doivent augmenter
     assert!(griefs_apres > griefs_initial, 
@@ -156,17 +161,16 @@ fn test_t7_3_choc_11_complet() {
     
     // Vérifier traçabilité : on peut retrouver u, p, q
     let entite = manager.entites.get(&entity_id).unwrap();
-    assert_eq!(entite.u, 0);  // u non modifié
-    assert_eq!(entite.p, 300); // p a augmenté
-    assert_eq!(entite.q, 0);  // q non modifié
+    assert_eq!(entite.griefs.u(), 0);
+    assert_eq!(entite.griefs.p(), 300);
+    assert_eq!(entite.griefs.q(), 0);
 }
 
 // ============================================================================
 // T7.4 : Intégration événementielle
 // ============================================================================
 
-/// T7.4 - Intégration événementielle : G mis à jour à chaque changement d'entrée
-/// Résultat identique à l'intégration continue
+/// T7.4 - Intégration événementielle : l'ancienne pente s'applique jusqu'à chaque changement.
 #[test]
 fn test_t7_4_integration_evenementielle() {
     let mut manager = SalaireReelEtGriefsManager::new();
@@ -174,34 +178,16 @@ fn test_t7_4_integration_evenementielle() {
     let entity_id = EntityId::new(EntityType::Cohort, 1);
     manager.ajouter_entite(entity_id);
     
-    // Initialiser toutes les entrées
-    if let Some(e) = manager.entites.get_mut(&entity_id) {
-        e.u = 100;
-        e.p = 100;
-        e.q = 100;
-        e.mettre_a_jour_griefs();
-    }
-    
-    let griefs_1 = manager.get_griefs(entity_id).unwrap();
-    // dG = 0.8*100 + 0.2*100 - 0.25*100 = 80 + 20 - 25 = 75
-    assert_eq!(griefs_1, 75);
-    
-    // Changer u (besoins non satisfaits augmente)
-    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::U, 200);
-    
-    let griefs_2 = manager.get_griefs(entity_id).unwrap();
-    // griefs_2 = 75 + dG(200,100,100) = 75 + (160 + 20 - 25) = 75 + 155 = 230 → clampé à 100
-    assert_eq!(griefs_2, 100);
-    assert!(griefs_2 > griefs_1);
-    
-    // Changer q (qualité améliore)
-    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::Q, 800);
-    
-    let griefs_3 = manager.get_griefs(entity_id).unwrap();
-    // dG(200,100,800) = 0.8*200 + 0.2*100 - 0.25*800 = 160 + 20 - 200 = -20
-    // griefs_3 = 100 + (-20) = 80
-    assert_eq!(griefs_3, 80);
-    assert!(griefs_3 < griefs_2);
+    manager.mettre_a_jour_entrees_griefs(entity_id, 1_000, 250, 0, Timestamp::new(0, 0)).unwrap();
+    manager.entites.get_mut(&entity_id).unwrap()
+        .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(95_000));
+
+    manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::U, 0, Timestamp::new(1, 2)).unwrap();
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(142_500));
+    manager.entites.get_mut(&entity_id).unwrap()
+        .mettre_a_jour_griefs(Timestamp::new(2, 0)).unwrap();
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(145_000));
 }
 
 // ============================================================================
@@ -227,12 +213,7 @@ fn test_t7_5_seuil_risque_cumule() {
     manager.mettre_a_jour_salaire_horaire(entity_id, 5000); // Salaire très élevé
     manager.mettre_a_jour_heures(entity_id, 8);
     
-    if let Some(e) = manager.entites.get_mut(&entity_id) {
-        e.u = 0;
-        e.p = 0;
-        e.q = 1000; // Qualité parfaite
-        e.calculer_taux_risque();
-    }
+    manager.mettre_a_jour_entrees_griefs(entity_id, 0, 0, 1_000, Timestamp::new(0, 0)).unwrap();
     
     let entite = manager.entites.get(&entity_id).unwrap();
     assert!(!entite.seuil_franchi(), 
@@ -241,12 +222,7 @@ fn test_t7_5_seuil_risque_cumule() {
     // Cas 2 : Salaire réel bas, griefs élevés → seuil franchi
     manager.mettre_a_jour_salaire_horaire(entity_id, 500); // Salaire bas
     
-    if let Some(e) = manager.entites.get_mut(&entity_id) {
-        e.u = 500;
-        e.p = 500;
-        e.q = 0; // Qualité mauvaise
-        e.calculer_taux_risque();
-    }
+    manager.mettre_a_jour_entrees_griefs(entity_id, 500, 500, 0, Timestamp::new(0, 0)).unwrap();
     
     let entite = manager.entites.get(&entity_id).unwrap();
     assert!(entite.seuil_franchi(), 
@@ -292,21 +268,13 @@ fn test_t7_6_greve_seulement_si_salaire_reel_bas() {
     // Salaire réel = (80000 * 100) / 5000 = 1600%
     
     // Mettre à jour les entrées de griefs - TOUTES EN UNE FOIS pour éviter l'accumulation
-    if let Some(e) = manager.entites.get_mut(&entity_a) {
-        e.cout_panier = manager.panier.cout_total();
-        e.u = 100;
-        e.p = 300;
-        e.q = 500;
-        e.calculer_salaire_reel();
-        e.mettre_a_jour_griefs(); // Calcule griefs = dG(100,300,500) = 15
-        e.calculer_taux_risque();
-    }
+    manager.mettre_a_jour_entrees_griefs(entity_a, 100, 300, 500, Timestamp::new(0, 0)).unwrap();
     
     let entite_a = manager.entites.get(&entity_a).unwrap();
     // Avec salaire réel très élevé, le seuil ne doit pas être franchi
     assert!(!entite_a.seuil_franchi(), 
         "T7.6 cas A : pas de grève avec salaire réel élevé malgré les chocs (griefs={}, salaire_reel={}, taux={}, seuil={})",
-        entite_a.griefs, entite_a.salaire_reel, entite_a.taux_risque, entite_a.seuil_risque);
+        entite_a.griefs.griefs_points(), entite_a.salaire_reel, entite_a.taux_risque, entite_a.seuil_risque);
     
     
     // Cas B : Salaire réel bas → grève
@@ -328,15 +296,7 @@ fn test_t7_6_greve_seulement_si_salaire_reel_bas() {
     // Salaire réel = (4000 * 100) / 5000 = 80%
     
     // Mettre à jour les entrées de griefs - TOUTES EN UNE FOIS
-    if let Some(e) = manager.entites.get_mut(&entity_b) {
-        e.cout_panier = manager.panier.cout_total();
-        e.u = 500;
-        e.p = 800;
-        e.q = 200;
-        e.calculer_salaire_reel();
-        e.mettre_a_jour_griefs(); // Calcule griefs = dG(500,800,200) = 0.8*500 + 0.2*800 - 0.25*200 = 400+160-50 = 510 → clampé à 100
-        e.calculer_taux_risque();
-    }
+    manager.mettre_a_jour_entrees_griefs(entity_b, 500, 800, 200, Timestamp::new(0, 0)).unwrap();
     
     let entite_b = manager.entites.get(&entity_b).unwrap();
     // Avec salaire réel bas et griefs élevés, le seuil doit être franchi
@@ -363,4 +323,50 @@ fn test_t7_7_validation_complete() {
     test_t7_4_integration_evenementielle();
     test_t7_5_seuil_risque_cumule();
     test_t7_6_greve_seulement_si_salaire_reel_bas();
+}
+
+#[test]
+fn input_changed_events_are_ordered_by_slot_and_drive_t7_state() {
+    let entity_id = EntityId::new(EntityType::Cohort, 1);
+    let mut manager = SalaireReelEtGriefsManager::new();
+    manager.ajouter_entite(entity_id);
+
+    let mut queue = EventQueue::new();
+    queue.push(Event::new(
+        Id::new(1),
+        0,
+        2,
+        Phase::Comptes,
+        Priority::new(0),
+        EVENT_TYPE_INPUT_CHANGED,
+        EventData::InputChanged {
+            entity_id,
+            u: 0,
+            p: 0,
+            q: 0,
+        },
+    ));
+    queue.push(Event::new(
+        Id::new(2),
+        0,
+        0,
+        Phase::Comptes,
+        Priority::new(0),
+        EVENT_TYPE_INPUT_CHANGED,
+        EventData::InputChanged {
+            entity_id,
+            u: 1_000,
+            p: 0,
+            q: 0,
+        },
+    ));
+
+    while let Some(event) = queue.pop() {
+        manager.appliquer_evenement(&event).unwrap();
+    }
+
+    let state = &manager.entites[&entity_id].griefs;
+    assert_eq!(state.last_update(), Timestamp::new(0, 2));
+    assert_eq!(state.u(), 0);
+    assert_eq!(state.griefs_micro_points(), 45_000);
 }

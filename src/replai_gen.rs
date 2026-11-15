@@ -136,6 +136,15 @@ pub fn generate_t1_bytes(seed: u64, num_events: usize) -> Vec<u8> {
                             "new_value": new_value
                         })
                     }
+                    EventData::InputChanged { entity_id, u, p, q } => {
+                        serde_json::json!({
+                            "type": "InputChanged",
+                            "entity_id": entity_id.to_u64(),
+                            "u": u,
+                            "p": p,
+                            "q": q
+                        })
+                    }
                 }
             })
         })

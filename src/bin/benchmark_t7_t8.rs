@@ -14,6 +14,8 @@ use vestiges_horizons::{
     salary::*,
     entities::*,
     strike::*,
+    EventData, EventQueue, Phase, Priority, Timestamp,
+    EVENT_TYPE_INPUT_CHANGED,
 };
 
 /// Graine pour le benchmark
@@ -25,7 +27,7 @@ const SIMULATION_DAYS: i64 = 365 * 10; // 10 ans
 /// Nombre de cohortes à simuler
 const NUM_COHORTS: u64 = 5;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Benchmark T7-T8 Headless ===");
     println!("Graine: {}", BENCHMARK_SEED);
     println!("Durée: {} jours ({} ans)", SIMULATION_DAYS, SIMULATION_DAYS / 365);
@@ -42,6 +44,7 @@ fn main() {
     let mut entity_manager = EntityManager::new(BENCHMARK_SEED);
     let mut salary_manager = SalaireReelEtGriefsManager::new();
     let mut strike_manager = StrikeManager::new(BENCHMARK_SEED);
+    let mut input_events = EventQueue::new();
     
     // Créer les cohortes
     let mut cohort_ids = Vec::new();
@@ -75,6 +78,27 @@ fn main() {
     for day in 0..SIMULATION_DAYS {
         jours += 1;
         
+        for (i, &cohort_id) in cohort_ids.iter().enumerate() {
+            let u = ((day + i as i64 * 100) % 1000) as u16;
+            let p = ((day * 2 + i as i64 * 50) % 1000) as u16;
+            let q = ((day * 3) % 1000) as u16;
+            input_events.push_at_with_id(
+                Timestamp::new(day, 0),
+                Phase::Comptes,
+                Priority::new(0),
+                EVENT_TYPE_INPUT_CHANGED,
+                EventData::InputChanged {
+                    entity_id: cohort_id,
+                    u,
+                    p,
+                    q,
+                },
+            );
+        }
+        while let Some(event) = input_events.pop() {
+            salary_manager.appliquer_evenement(&event)?;
+        }
+
         // Mettre à jour les salaires réels (simulation de variation des prix)
         // Chaque cohorte a une trajectoire différente
         for (i, &cohort_id) in cohort_ids.iter().enumerate() {
@@ -85,24 +109,6 @@ fn main() {
             }
             if day == 300 {
                 salary_manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
-            }
-            
-            // Mettre à jour u, p, q (simulation)
-            // u: besoins non satisfaits (0-1000)
-            // p: pression des prix (0-1000)
-            // q: qualité effective (0-1000)
-            let u = ((day as i64 + i as i64 * 100) % 1000).abs();
-            let p = ((day as i64 * 2 + i as i64 * 50) % 1000).abs();
-            let q = ((day as i64 * 3) % 1000).abs();
-            
-            salary_manager.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::U, u);
-            salary_manager.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::P, p);
-            salary_manager.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::Q, q);
-            
-            // Recalculer salaire réel et griefs
-            if let Some(e) = salary_manager.entites.get_mut(&cohort_id) {
-                e.cout_panier = salary_manager.panier.cout_total();
-                e.calculer_salaire_reel();
             }
             
             // Vérifier si le seuil de risque est franchi
@@ -156,6 +162,7 @@ fn main() {
     let mut entity_manager2 = EntityManager::new(BENCHMARK_SEED);
     let mut salary_manager2 = SalaireReelEtGriefsManager::new();
     let mut strike_manager2 = StrikeManager::new(BENCHMARK_SEED);
+    let mut input_events2 = EventQueue::new();
     
     // Même initialisation
     let mut cohort_ids2 = Vec::new();
@@ -180,24 +187,32 @@ fn main() {
     // Même simulation
     for day in 0..SIMULATION_DAYS {
         for (i, &cohort_id) in cohort_ids2.iter().enumerate() {
+            let u = ((day + i as i64 * 100) % 1000) as u16;
+            let p = ((day * 2 + i as i64 * 50) % 1000) as u16;
+            let q = ((day * 3) % 1000) as u16;
+            input_events2.push_at_with_id(
+                Timestamp::new(day, 0),
+                Phase::Comptes,
+                Priority::new(0),
+                EVENT_TYPE_INPUT_CHANGED,
+                EventData::InputChanged {
+                    entity_id: cohort_id,
+                    u,
+                    p,
+                    q,
+                },
+            );
+        }
+        while let Some(event) = input_events2.pop() {
+            salary_manager2.appliquer_evenement(&event)?;
+        }
+
+        for (i, &cohort_id) in cohort_ids2.iter().enumerate() {
             if day == 200 {
                 salary_manager2.mettre_a_jour_panier(PanierComposante::Nourriture, 1500);
             }
             if day == 300 {
                 salary_manager2.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
-            }
-            
-            let u = ((day as i64 + i as i64 * 100) % 1000).abs();
-            let p = ((day as i64 * 2 + i as i64 * 50) % 1000).abs();
-            let q = ((day as i64 * 3) % 1000).abs();
-            
-            salary_manager2.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::U, u);
-            salary_manager2.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::P, p);
-            salary_manager2.mettre_a_jour_entree_griefs(cohort_id, GriefEntree::Q, q);
-            
-            if let Some(e) = salary_manager2.entites.get_mut(&cohort_id) {
-                e.cout_panier = salary_manager2.panier.cout_total();
-                e.calculer_salaire_reel();
             }
             
             if let Some(e) = salary_manager2.entites.get(&cohort_id) {
@@ -282,9 +297,9 @@ fn main() {
     
     if all_pass {
         println!("✅✅✅ TOUS LES TESTS PASSENT ✅✅✅");
-        std::process::exit(0);
     } else {
         println!("❌❌❌ CERTAINS TESTS ÉCHOUENT ❌❌❌");
-        std::process::exit(1);
+        return Err("benchmark validations failed".into());
     }
+    Ok(())
 }

@@ -771,8 +771,10 @@ prochain_instant((j, c)) = (j, c + 1) si c < 3 sinon (j + 1, 0)
 
 ### 19.2 Griefs (équation du cadrage, ch. 2 et 14)
 
-- dG = 0,8·u + 0,2·p − 0,25·q points/jour, bornés [0, 100], **intégration événementielle** : G est mis à jour quand une entrée change, jamais par pas fixe ; coefficients par jour, calibrage pluriannuel.
-- Chaque individu nommé porte son grief individuel (mêmes coefficients, échantillonnage déterministe) ; les cohortes portent la somme pondérée (règle d'identité, 14.2). **I8 à tolérance zéro.**
+- Référence de calibrage (cadrage v7.8, ch. 2) : dG/dt = 0,09·u + 0,02·p − 0,03·q points/jour, avec u, p, q ∈ [0, 1] et G borné à [0, 100]. Les critères headless sont ceux du cadrage : pénurie totale durable vers saturation en 2 à 4 ans, pénurie partielle u = 0,3 en 8 à 12 ans, apaisement q = 1 en 6 à 10 ans.
+- Échelle d'implémentation entière : u, p, q sont stockés en millièmes [0, 1000] et G en micro-points [0, 100 000 000]. La pente correspondante est s = 90·u + 20·p − 30·q micro-points/jour ; aucun soulagement constant n'est ajouté.
+- **Intégration événementielle** : avant chaque changement d'entrée, intégrer l'ancienne pente sur le temps logique écoulé ; ne jamais utiliser un pas journalier fixe. Les changements intrajournaliers utilisent le grain logique défini par P1b et une politique de reste/arrondi déclarée par la spec corrective.
+- Chaque individu nommé porte son grief individuel selon la même dynamique, avec les coefficients individuels déterministes prévus au cadrage ; les cohortes portent le total pondéré selon la règle d'identité (14.2). **I8 à tolérance zéro.**
 - L'entrée griefs du stress (15.5) s'active ici ; le seuil de risque cumulé calcule ses entrées (G, salaire réel, moyens de la cohorte) mais le basculement attend la tranche 8.
 - **Choc 11 complété** (décision 36) : l'assertion griefs traçables s'ajoute aux flux fiscaux déjà testés.
 

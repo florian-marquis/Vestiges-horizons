@@ -31,6 +31,7 @@ type: "text/markdown"
 
 ## 2. En cours (réflexion ouverte)
 
+- **Correctif T7-T8 v1.2** : tranche A implémentée (moteur canonique, événements `InputChanged`, créneaux) ; 7 tests unitaires et 8 tests d'intégration verts. Le benchmark compte une grève par cohorte et par jour (18 250 sur 18 250 vérifications), comportement à réexaminer lors de la spécification du risque en tranche B. Les règles I8 / `G + δ` restent différées.
 - **Révoltes/révolutions** : feuille de route de 6 questions à trancher avant cadrage — (1) grain de la légitimité [racine], (2) sortie de la révolte de quartier (émeute), (3) pouvoir central organisation ou mur, (4) économie politique de la révolte, (5) conséquences de la victoire, (6) calibrage de rareté.
 - **Économie spatiale** : 6 questions ouvertes — (1) première instance de P2 : ville ou station [intuition : ville], (2) qui construit les mégastructures, (3) FTL jamais ? à confirmer, (4) économie des ressources (astéroïdes vs surfaces), (5) statut de la place d'échange [intuition : infrastructure-institution + firmes], (6) calibrage des coûts d'accès.
 
@@ -49,7 +50,7 @@ type: "text/markdown"
 ### Développement (quand la décision sera prise)
 9. **Tranche 1 — noyau temporel** : ordre de mission prêt (spec section 13 + mission section 29). Rien à spécifier de plus ; **implémentée dans src/lib.rs**.
 10. **Tranches 2 à 6** : **implémentées** (entities.rs, time.rs, firm.rs, market.rs, credit.rs, labor.rs).
-11. **Tranche 7 — Salaires réels et griefs** : **implémentée** (salary.rs, tests/test_tranche7.rs, 7 tests verts).
+11. **Tranche 7 — Salaires réels et griefs** : moteur existant corrigé en tranche A du correctif T7-T8 v1.2 (`src/griefs.rs`, `src/salary.rs`, 7 tests unitaires et 8 tests d'intégration verts).
 12. **Tranche 8 — Basculements** : **implémentée** (strike.rs, tests/test_tranche8.rs, 9 tests verts).
 13. Tranches 9-11 (vie sociale, suite headless, P1b scène) : à lancer après clôture correctif T7-T8 ; 11a headless avant 11b rendu.
 14. **Écarts d'implémentation à traiter** (signalés, non corrigés dans cette session) :
