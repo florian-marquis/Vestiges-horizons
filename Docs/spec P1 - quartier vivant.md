@@ -1,7 +1,7 @@
 
 # Vestige : Horizon · Spécification P1 : le quartier vivant
 
-Document de spécification du premier palier jouable, destiné à être exécuté par des agents (Cursor). Références : Cadrage v6.5 (chapitres 2, 3, 9, 10, 11, 14, 16, 17), Conventions v2. Chaque section se termine par ce qui la valide ; « à calibrer » désigne une valeur d'hypothèse, jamais une décision.
+Document de spécification du premier palier jouable, destiné à être exécuté par des agents (Cursor). Références : Cadrage v7.8 / v7.8.1 (chapitres 2, 3, 7, 9, 10, 11, 12, 13, 14, 16, 17, 18), Conventions v2.2. Immersion et scène locale : `Docs/spec/P1b - scene locale et immersion - spec.md`. Chaque section se termine par ce qui la valide ; « à calibrer » désigne une valeur d'hypothèse, jamais une décision.
 
 ## 1. Question fermatoire
 
@@ -9,25 +9,26 @@ Document de spécification du premier palier jouable, destiné à être exécut�
 
 ## 2. Périmètre
 
-**Inclus** : noyau de simulation (horloge, file d'événements, ordonnancement), individus et cohortes, besoins fondamentaux et budget de temps, états individuels déclenchés (faim, fatigue, stress, ennui, douleur, angoisse, dépression), empathie et contagion de souffrance, vivacité des PNJ (hétérogénéité, habitudes, mémoire active, répliques, groupes informels, rituels), traits du décideur, valuation des rôles pondérée en données, repas différenciés et eau refacturée au prix du biome, firmes de bouche et de loisir (épicerie, restaurant, étuve), métiers et maisonnées, marché des biens à prix affichés fixés par les firmes, marché du travail à cinq grandeurs, salaire réel et griefs, basculements (grève), usure et entretien minimaux, pratiques et apprentissage, reconnaissance, crédit et saisie, santé-trajectoire, qualité des biens, logements différenciés avec sous-location, vie vitale minimale, parrainage, fiscalité forfaitaire (prélèvement à la source, allocations fixes), attractivité enregistrée, journal causal, bots et suite headless, écrans minimaux (P1b).
+**Inclus** : noyau de simulation (horloge, file d'événements, ordonnancement à instant (jour, créneau)), individus et cohortes, besoins fondamentaux et budget de temps, états individuels déclenchés (faim, fatigue, stress, ennui, douleur, angoisse, dépression), empathie et contagion de souffrance, vivacité des PNJ (hétérogénéité, habitudes, mémoire active, répliques, groupes informels, rituels), traits du décideur, valuation des rôles pondérée en données, repas différenciés et eau refacturée au prix du biome, firmes de bouche et de loisir (épicerie, restaurant, étuve), métiers et maisonnées, marché des biens à prix affichés fixés par les firmes, marché du travail à cinq grandeurs, salaire réel et griefs, basculements (grève), usure et entretien minimaux, pratiques et apprentissage, reconnaissance, crédit et saisie, santé-trajectoire, qualité des biens, logements différenciés avec sous-location, vie vitale minimale, parrainage, fiscalité forfaitaire (prélèvement à la source, allocations fixes), attractivité enregistrée, journal causal, bots et suite headless, P1b : présence lieu-créneau, scène causale, promenade de rendu, écrans atteints par la présence (voir spec P1b).
 
-**Exclus (et c'est tranché)** : politique et légitimité (P2), politique fiscale (taux vivants, incitations, allocations conditionnelles : P2-P3), institutions de solidarité et groupes de pression (P2, route 12 du cadrage ; la graine en P1 est le régime « rien » : dispensaire privé payé à l'acte), migrations (routes 10 et 11 du cadrage), ville hors quartier (le quartier a des frontières commerciales : import/export à prix de référence), terrain praticable et marche (P2), combat, logistique interrégionale, réseaux et constellations (le terminal du joueur est local), succession, voyages. Le seul acteur nonhumain est le « marché de la ville », une source et un puits à prix de référence, pas un agent.
+**Exclus (et c'est tranché)** : politique et légitimité (P2), politique fiscale (taux vivants, incitations, allocations conditionnelles : P2-P3), institutions de solidarité et groupes de pression (P2, route 12 du cadrage ; la graine en P1 est le régime « rien » : dispensaire privé payé à l'acte), migrations (routes 10 et 11 du cadrage), ville hors quartier (le quartier a des frontières commerciales : import/export à prix de référence), coordonnées continues, trajets simulés, pathfinding, objets et gestes de métier simulés, vue détaillée du service (route candidate P2), combat, logistique interrégionale, réseaux et constellations (le terminal du joueur est local), succession, voyages. Le seul acteur nonhumain est le « marché de la ville », une source et un puits à prix de référence, pas un agent.
 
 ## 3. Unités et arithmétique
 
-- Tout est entier. Monnaie : centimes (1 unité = 100). Probabilités : 1/10 000. Temps : le jour est l'unité d'ancrage ; les durées en jours ; les heures de budget de temps en demi-heures. Le jour porte quatre **créneaux** étiquetés (matin, après-midi, soir, nuit) : des étiquettes sur les demi-heures, jamais une horloge intra-journalière.
-- Un événement porte un horodatage logique (jour, index de séquence d'horloge). Deux événements du même jour ne partagent jamais le même rang d'exécution (cadrage ch. 9).
+- Tout est entier. Monnaie : centimes (1 unité = 100). Probabilités : 1/10 000. Temps : le jour est l'unité d'ancrage ; les durées en jours ; les heures de budget de temps en demi-heures. Le jour porte quatre **créneaux** (matin=0, après-midi=1, soir=2, nuit=3) : ce sont l'index de séquence de l'horodatage logique (cadrage ch. 9, v7.8.1), pas une horloge continue ; les 32 demi-heures se regroupent en 4×8.
+- Un événement porte un horodatage logique `(jour, créneau)`. Deux événements du même `(jour, créneau)` ne partagent jamais le même rang d'exécution : ordre canonique `(jour, créneau, phase, priorité, id)` (cadrage ch. 9).
 - Aucun flottant dans l'état canonique ; les taux (usure, griefs) sont des entiers avec échelle déclarée.
 
 ## 4. Entités canoniques
 
 | Entité | Champs minimaux | Notes |
 | --- | --- | --- |
-| Individu | id, cohorte d'origine, âge, rôle (journalier, ouvrier, patron, retiré), pratiques maîtrisées (id pratique → niveau), solde (centimes), logement (id ou aucun), pratique en cours, états cachés (faim, fatigue, stress, ennui, douleur : 0-1000), empathie (0-1000), routine (emploi du temps par défaut), mémoire saillante (références, plafond 20) | 150 au départ ; extraction d'un individu nommé selon l'invariant I1 |
-| Cohorte | id, effectif, motivations dominantes (w), attachement moyen, griefs (0-100), heures disponibles, salaire réel cible | 3 à 5 au départ ; porte des totaux conservés (monnaie, somme des griefs pondérée, attachement), moyennes dérivées (14.2) ; regroupement des cohortes proches autorisé, fusion conservative |
+| Individu | id, cohorte d'origine, âge, rôle (journalier, ouvrier, patron, retiré), pratiques maîtrisées (id pratique → niveau), solde (centimes), logement (id ou aucun), pratique en cours, états cachés (faim, fatigue, stress, ennui, douleur : 0-1000), empathie (0-1000), routine (emploi du temps par défaut, 32 demi-heures positionnées : Usage + id lieu), mémoire saillante (références, plafond 20), présence courante (id lieu, créneau) | 150 au départ ; extraction d'un individu nommé selon l'invariant I1 |
+| Cohorte | id, effectif, motivations dominantes (w), attachement moyen, griefs (0-100), heures disponibles, salaire réel cible, présences agrégées (lieu × créneau → effectif) | 3 à 5 au départ ; porte des totaux conservés (monnaie, somme des griefs pondérée, attachement), moyennes dérivées (14.2) ; regroupement des cohortes proches autorisé, fusion conservative |
+| Lieu | id, type (firme, logement, rue, place), référence optionnelle (id firme ou logement), créneaux d'ouverture | Firmes et logements sont des lieux ; rue et place commune sans firme ; détail dans la spec P1b |
 | Foyer | id, membres, logement, dette | Décisions d'achat au niveau foyer pour les biens domestiques |
 | Groupe informel | id, membres (3 à 6 individus nommés), lieu habituel, affinités | Embryon du réseau de faveurs (P2) ; canal de contagion de la souffrance |
-| Firme | id, type (atelier, épicerie, restaurant, étuve, propriétaire foncier, crédit, dispensaire, maisonnée), décideur (id individu), cohorte employée, actifs, stock d'intrants, stock de produits, prix affiché, masse salariale, trésorerie, dette d'entretien, créneaux d'ouverture | 8 à 12 au départ ; la faillite est possible (transfert des actifs au créancier principal, jamais destruction de monnaie) |
+| Firme | id, type (atelier, épicerie, restaurant, étuve, propriétaire foncier, crédit, dispensaire, maisonnée), décideur (id individu), cohorte employée, actifs, stock d'intrants, stock de produits, prix affiché, masse salariale, trésorerie, dette d'entretien, créneaux d'ouverture | 8 à 12 au départ ; la faillite est possible (transfert des actifs au créancier principal, jamais destruction de monnaie) ; chaque firme est aussi un Lieu |
 | Bien | id, unité, qualité, prix affiché (centimes), stock | 3 biens au départ : nourriture (2 qualités), logement (3 niveaux), soins |
 | Logement | id, niveau (1 à 3), taille, occupants, sous-locataires, propriétaire | Parc fixe en quantité, différencié en qualité |
 | Prêt | id, prêteur, emprunteur, principal, taux, garantie, échéancier, état (sain, en défaut, saisi) | Prêteur = firme ; prêts entre individus via la même table |
@@ -42,7 +43,7 @@ Document de spécification du premier palier jouable, destiné à être exécut�
 
 ## 5. Recensement des événements et phases
 
-Le tri des événements d'un même jour suit : horodatage (jour), puis phase, puis priorité en données, puis id. Phases du recensement P1 (aucune autre ne sera ajoutée sans justification) :
+Le tri des événements suit : horodatage `(jour, créneau)`, puis phase, puis priorité en données, puis id. Ordre canonique total : `(jour, créneau, phase, priorité, id)`. Phases du recensement P1 (aucune autre ne sera ajoutée sans justification) :
 
 | Phase | Événements |
 | --- | --- |
@@ -54,7 +55,7 @@ Le tri des événements d'un même jour suit : horodatage (jour), puis phase, pu
 | 6 · Social | mise à jour des griefs, franchissement du seuil de risque cumulé (grève), reconnaissance (promotion, affront), franchissement de seuil d'état (faim, fatigue, stress, ennui, douleur), interruption d'urgence, activité de loisir, contagion de souffrance, rituel social, maladie, blessure, guérison, séquelle, décès, naissance, héritage, extraction d'un individu nommé |
 | 7 · Journal | compactage, rétention |
 
-Règle : les événements générés pendant le traitement partent au jour suivant (ou à l'instant logique suivant intra-jour si la phase n'est pas encore passée) ; jamais d'exécution immédiate réentrante.
+Règle : les événements générés pendant le traitement partent à un instant `(jour, créneau)` strictement postérieur ; sans date explicite, au prochain créneau (ou lendemain créneau 0 si nuit) ; jamais d'exécution immédiate réentrante. Le créneau naturel de chaque type d'événement est en données (défaut 0 pour compatibilité des replais ; voir spec P1b, T11a.1).
 
 ## 6. Mécanismes
 
@@ -124,12 +125,14 @@ dG = 0,8·u + 0,2·p − 0,25·q   (points/jour, bornés [0, 100], intégrés qu
 - Groupe de référence : cohorte + immeuble. Position relative = rang du revenu du foyer dans le groupe, borné.
 - Mise à jour sur événements : promotion, embauche, licenciement, acte marquant, affront. Elle pèse dans Q(a) des individus (peser sur l'ambition : accepter un poste risqué, migrer), pas sur G directement.
 
-### 6.7 Écran du joueur (P1b, minimal)
+### 6.7 Écran du joueur (P1b, présence et scène)
 
 - Le personnage du joueur est un individu standard de la cohorte des journaliers, sans pouvoir spécial.
-- Console portable : doctrine personnelle éditable (poids entre besoins, travail, formation, reconnaissance ; modèles prédéfinis, pas de script libre), planification basique (accepter un poste, choisir une pratique, abonnement d'achat).
-- Vue du quartier : liste des foyers et individus nommés, états qualitatifs (jamais de jauge numérique de grief), journal causal consultable avec dates d'apprentissage.
-- Marche et terrain : hors périmètre P1, tranché pour P2.
+- **Présence lieu-créneau** : le joueur est dans un lieu pendant un créneau ; y entrer et y agir réserve des demi-heures de l'emploi du temps (spec P1b). La marche et les trajectoires sont du rendu pur, jamais sauvegardées ; aucune coordonnée dans l'état.
+- Console portable et postes fixes : objets-lieux ; doctrine personnelle éditable (poids entre besoins, travail, formation, reconnaissance ; modèles prédéfinis, pas de script libre), planification basique (accepter un poste, choisir une pratique, abonnement d'achat) — présence requise pour éditer, lecture possible à distance dans le quartier.
+- Vue du quartier : liste des foyers et individus nommés, états qualitatifs (jamais de jauge numérique de grief), journal causal consultable avec dates d'apprentissage ; scène causale (vignettes = projection du journal, zéro décor).
+- Interaction P1 réduit : observer, demander (poste, essai, parrainage, ardoise, prêt), témoin direct dans le lieu courant. Parole à intention complète et écoute passive : P1.5 (sections 24 et 27).
+- Détail complet : `Docs/spec/P1b - scene locale et immersion - spec.md`.
 
 ### 6.8 Crédit et saisie
 
@@ -255,9 +258,9 @@ dG = 0,8·u + 0,2·p − 0,25·q   (points/jour, bornés [0, 100], intégrés qu
 - **Vocations** : les choix de formation suivent la reconnaissance ; un rôle méprisé voit ses salaires monter par pénurie (correction partielle, à calibrer).
 - P2 et plus : les institutions (académies, presse, lobbies) façonnent les curseurs (route 12) ; divergence entre planètes (route 6) ; l'attractivité migratoire devient culturelle (routes 10 et 11).
 
-### 6.22 Créneaux et rythme social (schéma en P1, couplage en P1.5)
+### 6.22 Créneaux et rythme social (instant logique en P1, couplage en P1.5)
 
-- **En P1, le schéma seulement** : les postes déclarent leur créneau, les lieux leurs heures d'ouverture, les emplois du temps remplissent des créneaux. Pas d'horloge intra-journalière : le jour reste l'unité d'ancrage, les créneaux sont des étiquettes sur les demi-heures existantes.
+- **En P1, le créneau est l'instant logique** (v7.8.1) : les postes déclarent leur créneau, les lieux leurs heures d'ouverture, les emplois du temps remplissent des créneaux (32 demi-heures positionnées, Usage + id lieu). Pas d'horloge continue : le jour reste l'unité d'ancrage, le créneau ordonne l'exécution `(jour, créneau, phase, priorité, id)`. La résolution d'un créneau a lieu à sa clôture (spec P1b §5).
 - **Le couplage entre en P1.5** (avec la vie sociale, tranche 9) :
   - **Fréquentation par recouvrement** : la fréquentation d'un lieu = les individus dont le temps libre chevauche son créneau d'ouverture ; les files ont des heures de pointe ; le rythme majoritaire du quartier est une émergence de la distribution des créneaux des postes, pas une règle.
   - **Prime de créneau impopulaire** : si les postes d'un créneau sont rares, les firmes paient une prime (différentiel compensateur, comme le vidangeur) ; contrepartie : pénalité de fatigue et de stress pour le travail nocturne.
@@ -330,7 +333,7 @@ Garantie de design : après une faillite (saisie du logement, perte de l'atelier
 | Groupes informels | 10 à 15 cercles de 3 à 6 membres au départ |
 | Rituels | jour de paie, jour de marché hebdomadaire ; funérailles et visites de naissance sur événement |
 | Valuation | curseurs fixes en P1 (pôle « valeur individuelle ») ; pondérations de la reconnaissance en données |
-| Créneaux | 4 étiquettes par jour (matin, après-midi, soir, nuit) sur postes, lieux et emplois du temps ; prime de nuit, rotations d'équipes, lits chauds : P1.5 (6.22) |
+| Créneaux | 4 instants logiques par jour (matin, après-midi, soir, nuit) ; postes, lieux et emplois du temps positionnés ; prime de nuit, rotations d'équipes, lits chauds : P1.5 (6.22) ; scène et régimes de vitesse : spec P1b |
 | Durée des tests | 10 ans simulés, 5 graines minimum |
 
 ## 9. Suite de tests headless
@@ -377,13 +380,14 @@ Chaque tranche suit la convention 25 et se ferme par ses tests. Rien n'est ajout
 | 8 | Basculements | seuil de risque cumulé, grève (spec détaillée en section 20) | même graine → même date de grève ; re-tirage impossible |
 | 9 | Pratiques, reconnaissance et vie sociale | maîtrise, apprentissage, plafond vétérans, reconnaissance, valuation des rôles, empathie et contagion, groupes informels, rituels, naissances et décès, héritage (spec détaillée en section 21) | montée de niveau par exécution ; un élève isolé progresse moins vite ; un deuil baisse l'offre de travail du groupe (scénario 13) ; naissance/décès conservent I1 |
 | 10 | Suite headless et bots | 13 scénarios (équilibre + 12 chocs), 5 bots, 5 graines, benchmark (spec détaillée en section 22) | tous les invariants verts ; rapport de mesures ; un bot après faillite sort de la misère à 5 ans sur toutes les graines (6.24) ; le choc 2 est amorti avec retard et signifiant (6.2) |
-| 11 | P1b, écrans minimaux | doctrine personnelle, planification, vue quartier, journal (spec détaillée en section 23) | un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; aucune attente passive non signalée ; le classement par valeur d'intervention suffit à tenir le joueur informé sans surveillance continue |
+| 11a | P1b, contrat de scène (headless) | présence lieu-créneau, instant (jour, créneau), emploi du temps positionné, `scene(...)` lecture seule, figurants, densité de scènes (spec P1b ; section 23) | T11a.1 à T11a.9 (équivalence d'ordre, transparence du théâtre, rendu sans écriture, non-contradiction, symétrie, témoin, coût, benchmark, densité) |
+| 11b | P1b, rendu et écrans | promenade de rendu, marqueurs d'état, calques de sprite, écrans atteints par la présence, régimes de vitesse (spec P1b ; sections 23 et 27) | T11b.1 : un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; co-présence ressentie ; aucune attente passive non signalée |
 
 ## 11. Décisions tranchées (session « profondeur P1 »)
 
 1. **Reprice = action de la firme** via Q(a) ; l'heuristique par seuils de stock est le comportement par défaut en données, pas une règle du moteur.
 2. **Allocation en pénurie par file** (arrivée, rang, id), pas par rationnement proportionnel.
-3. **P1b limité aux écrans** : la marche et le terrain sont tranchés pour P2.
+3. **P1b = présence lieu-créneau + scène causale** : l'état connaît (individu ou effectif, lieu, créneau) ; la marche et les trajectoires sont du rendu pur, jamais sauvegardées ; aucune coordonnée, aucun trajet simulé ; la vue détaillée du service reste en P2 (route candidate).
 4. **Parc immobilier fixe et différencié** : 45 logements en 3 niveaux, sous-location permise (le sous-locataire paie moins mais sa densité monte), construction hors périmètre P1.
 5. **Trois cohortes au départ** ; le regroupement des journaliers et ouvriers en une seule cohorte est testé en tranche 10.
 6. **Cinq enrichissements inclus dans P1** : crédit et saisie, santé-trajectoire, qualité des biens, vie vitale minimale (naissance, décès, héritage), parrainage.
@@ -399,7 +403,7 @@ Chaque tranche suit la convention 25 et se ferme par ses tests. Rien n'est ajout
 16. **Traits du décideur modulent Q(a) de la firme** ; empathie = patience et tolérance, bornée par la pérénité ; employabilité modulée par la tolérance ; deux régimes de gestion viables, aucun dominant.
 17. **Valuation des rôles pondérée en données dès P1** (curseurs fixes, jamais le rang de revenu codé en dur) ; l'écart de valuation est une mesure ; les vocations suivent la reconnaissance.
 18. **Solidarité et lobbying : P1 = régime « rien »** (dispensaire privé à l'acte, aucune assurance) ; les institutions de solidarité et les groupes de pression entrent en P2 (cadrage, route 12).
-19. **Créneaux, pas horloge** : quatre étiquettes par jour sur postes, lieux et emplois du temps dès le cœur P1 ; le couplage (fréquentation, primes de créneau, équipes tournantes, lits chauds) entre en P1.5 ; le rythme du quartier est une émergence, jamais une règle.
+19. **Créneaux = instant logique, pas horloge continue** : quatre créneaux par jour (matin, après-midi, soir, nuit) sont l'index de séquence de l'horodatage ; ordre `(jour, créneau, phase, priorité, id)` ; résolution à la clôture du créneau ; le couplage (fréquentation, primes, équipes tournantes, lits chauds) entre en P1.5 ; le rythme du quartier est une émergence, jamais une règle.
 20. **Élasticité de la ville** : la courbe d'offre du marché de la ville est en données (prix de référence montant avec le volume demandé, délais logistiques 3 à 10 jours) ; la ville amortit les chocs locaux avec retard, elle ne les neutralise pas ; aucune règle d'équilibre du moteur.
 21. **Enfants contributeurs** : participation domestique progressive dès 8 ans (corvées, garde des petits, plafond 2 demi-heures/jour), jamais d'emploi salarié avant l'âge adulte ; l'aide par enfant (6.16) amortit le reste.
 22. **Plancher anti-impasse = propriété testée, pas règle** : quatre voies assemblées (entraide, servitude, maisonnée, sous-location précaire) ; critère : taux de sortie de misère post-faillite strictement positif à 5 ans sur toutes les graines ; un échec est un défaut de calibrage.
@@ -430,7 +434,7 @@ Chaque tranche suit la convention 25 et se ferme par ses tests. Rien n'est ajout
 47. **Naissances agrégées** : les enfants sont des effectifs de cohorte ; les individus nommés n'existent qu'à l'extraction, vers 14 ans ; naissance et décès conservent I1.
 48. **Tranche 10 sans mécanisme** : elle joue la suite et produit le rapport ; tout échec remonte à la tranche fautive, jamais corrigé ici.
 49. **Benchmark 300 ans = critère late game du palier** : latence et taille de file sous les seuils fixés en 13.6 et 13.7.
-50. **P1b sans mécanisme** : les écrans lisent l'état et le journal, éditent doctrine et planification (déjà des données) ; aucun pouvoir que les PNJ n'ont pas.
+50. **P1b sans mécanisme économique nouveau** : les écrans et la scène lisent l'état et le journal, éditent doctrine et planification (déjà des données) ; la présence lieu-créneau est le grain d'immersion, pas une couche économique ; aucun pouvoir que les PNJ n'ont pas.
 51. **Sélection et rendu séparés** : choisir de parler est une décision Q(a) journalisée ; le texte est un rendu hors état, à la demande ; messages Fluent entiers, attributs grammaticaux en données ; la locale ne touche jamais la simulation ; le LLM n'est qu'un outil d'écriture du corpus.
 52. **Parler = action Q(a) à intention** : six intentions (se plaindre, partager, inciter, demander, entretenir, transmettre), portées par des variables existantes ; aucun moteur d'intentions parallèle.
 53. **Catharsis dégressive, G fermé** : la répétition décroît (×0,5) ; la contagion passe par le stress ; l'équation de griefs ne dépend que de u, p, q.
@@ -442,11 +446,15 @@ Chaque tranche suit la convention 25 et se ferme par ses tests. Rien n'est ajout
 59. **Émigration et griefs (P2, route 10)** : le départ d'un proche est un événement de vie (mémoire, reconnaissance) ; l'émigré sort des comptes par transfert déclaré (I1) ; griefs résiduels seulement si le départ est perçu comme abandon (affront, en données).
 60. **Pain-et-jeux (P2)** : le levier des factions est le financement d'occasions sociales et de rituels (fête de quartier) ; coût réel, rendement décroissant, transparence dépend de la fiabilité des rapports (route 2).
 61. **Trappe des allocations** : l'allocation vieillesse (½ panier) est structurellement sous le seuil de survie ; critère : taux de sortie de misère insensible aux allocations (choc 11) ; aucune conditionnalité en P1.
-62. **Écran de conversation** : intentions filtrées par le contexte, cible choisie, jamais de texte libre ni de minigame ; l'écoute passive est une source d'information datée ; les intentions indisponibles sont grisées avec leur raison.
+62. **Écran de conversation** : en P1b, surfaces réduites (observer, demander, témoin direct) sous co-présence lieu-créneau ; en P1.5, intentions filtrées par le contexte, cible choisie, écoute passive datée ; jamais de texte libre ni de minigame ; les intentions indisponibles sont grisées avec leur raison.
 63. **Engagement employé ↔ firme** : scalaire par couple (0-1000), mis à jour uniquement par les décisions observées de la firme (× empathie × proximité, mémoire saillante), demi-vie 1 à 2 ans ; jamais lu par le décideur (décision 57) ; il pondère les décisions d'arrêt, de soin et de démission des salariés.
 64. **Prévention au lieu de bonus** : l'engagement ne produit ni temps de travail supplémentaire ni bonus de production ; il réduit la probabilité d'incidents (usure ralentie, en données) et débloque des options de résolution dans les décisions ponctuelles ; la productivité supérieure est une mesure émergente (production par heure travaillée), jamais un coefficient. Un temps donné ou un multiplicateur dérivé de l'engagement est une faute de conception (double comptage du travail déjà payé en heures).
 65. **Contagion de maladie à l'atelier** : l'exposition aux malades présents (même lieu, même créneau) est un facteur de risque de 6.9 ; travailler malade allonge la maladie et monte le risque de séquelle ; le présentéisme est une décision Q(a) pondérée par l'engagement, jamais une règle ; aucun régime de gestion ne devient dominant (choc de demande).
 66. **Recettes multi-postes à goulot** : une recette déclare des étages (pratique requise × capacité), la production de la firme est le min des capacités pourvues, recalculée par événement (embauche, départ, incident), goulot journalisé ; aucune chorégraphie par objet ni sous-action de métier instanciée (préparer, cuire, dresser) : on simule la contrainte, jamais les gestes.
+67. **Présence = (lieu, créneau), marche = rendu** : l'état canonique ne porte aucune coordonnée ; changer de lieu réserve des demi-heures ; symétrie joueur/PNJ stricte (absence au poste = pas travaillé).
+68. **Scène = fonction pure** : `scene(état, journal, instant, observateur)` est hors état, déterministe, sans écriture ; toute vignette référence un événement ou un état ; figurants tirés des agrégats de présence, plafond de sprites ; densité trop basse = signal de simulation, jamais du bruit.
+69. **Théâtre local transparent** : halte entre créneaux seulement en régime scène et dans la bulle du personnage ; avec ou sans halte, empreinte et journal identiques (T11a.2).
+70. **Créneau naturel en données** : chaque type d'événement déclare son créneau (défaut 0) ; passer du défaut 0 aux créneaux naturels change les replais → validation humaine (convention 6).
 
 Routes approuvées pour P2 et plus (voir cadrage, ch. 17) : vol et milice, réseau de faveurs complet, spéculation et revente individuelle, migrations inter-quartiers (route 10) et interplanétaires (route 11), institutions de solidarité et groupes de pression (route 12). Pour le combat (P2+) : le stress individuel et de cohorte sera une entrée du moral des unités, la panique un basculement (cadrage ch. 11).
 
@@ -463,53 +471,60 @@ Routes approuvées pour P2 et plus (voir cadrage, ch. 17) : vol et milice, rése
 
 ### 13.1 Horloge
 
-- Compteur de jours, entier non signé, démarrage J0. **Aucune heure du jour dans le noyau** : les demi-heures et créneaux (6.1, 6.22) sont des attributs de planification des entités, jamais de l'horloge.
+- Compteur de jours, entier non signé, démarrage J0, et créneau courant (0 à 3). **Aucune heure continue dans le noyau** : les demi-heures (6.1) restent des attributs de planification des entités ; le créneau est l'index de séquence de l'horodatage logique (6.22, v7.8.1).
 - Calendrier d'affichage (mois, années ; 30 jours/mois à calibrer) : pure conversion pour le rendu et les séries, **hors état canonique**.
-- L'horodatage logique d'un événement est sa clé de tri complète : (jour, phase, priorité, id).
+- L'horodatage logique d'un événement est sa clé de tri complète : `(jour, créneau, phase, priorité, id)`.
 
 ### 13.2 Événement
 
 | Champ | Type | Note |
 | --- | --- | --- |
 | jour | u64 | unité d'ancrage |
+| créneau | u8 | 0 à 3 (matin, après-midi, soir, nuit) ; créneau naturel du type en données, défaut 0 |
 | phase | u8 | 1 à 7, recensement de la section 5, ensemble fermé |
 | priorité | i32 | par type d'événement, en données, défaut 0 |
 | id | u64 | compteur global monotone, jamais réutilisé |
 | type | id | type d'événement en données |
 | payload | données du type | références par id, sérialisable |
 
-La clé (jour, phase, priorité, id) est **totale** : l'id unique interdit tout ex æquo, l'ordre canonique est sans ambiguïté.
+La clé `(jour, créneau, phase, priorité, id)` est **totale** : l'id unique interdit tout ex æquo, l'ordre canonique est sans ambiguïté. Compatibilité : tous les types au créneau 0 reproduisent les journaux antérieurs (T11a.1, spec P1b).
 
 ### 13.3 File, journée et report
 
-- File de priorité (min-heap) sur la clé. Traiter un jour J = extraire tous les événements de jour ≤ J dans l'ordre canonique ; la journée est finie quand la file ne contient plus d'événement de jour ≤ J.
-- **Report (règle de la section 5, précisée)** : tout événement généré pendant le traitement est daté d'un instant **strictement postérieur** à l'instant courant (jour, phase en cours). Sans date explicite, le noyau le date au prochain instant : phase suivante du même jour, sinon lendemain phase 1. Avec date explicite (échéance de prêt, fin de choc), elle doit être strictement postérieure à l'instant courant, sinon rejet (invariant, arrêt du replai). Jamais d'exécution réentrante : aucune boucle causale ne peut boucler intra-instant, et le générateur ne choisit jamais la date de ses conséquences immédiates.
+- File de priorité (min-heap) sur la clé. Traiter un créneau `(J, C)` = extraire tous les événements de `(jour, créneau) ≤ (J, C)` dans l'ordre canonique ; le créneau est fini quand la file ne contient plus d'événement ≤ `(J, C)` ; la journée est finie après le créneau 3.
+- **Report (règle de la section 5, précisée)** : tout événement généré pendant le traitement est daté d'un instant **strictement postérieur** à l'instant courant `(jour, créneau)`. Sans date explicite, le noyau le date au prochain créneau (ou lendemain créneau 0 si nuit). Avec date explicite (échéance de prêt, fin de choc), elle doit être strictement postérieure, sinon rejet (invariant, arrêt du replai). Jamais d'exécution réentrante.
+- **Théâtre local (P1b)** : en régime scène, une halte d'horloge réelle peut s'insérer entre deux créneaux dans la bulle du personnage ; elle ne modifie ni l'ordre ni le contenu (T11a.2).
 
 ### 13.4 État sérialisable
 
-- État du noyau = { horloge, compteur d'id, état du RNG (flux déterministes, un par usage), file sérialisée dans l'ordre de la clé, registres des systèmes (vides en tranche 1) }.
+- État du noyau = { horloge (jour, créneau), compteur d'id, état du RNG (flux déterministes, un par usage), file sérialisée dans l'ordre de la clé, registres des systèmes (vides en tranche 1) }.
 - Sérialisation canonique : champs dans un ordre fixé par le code, entiers à boutisme fixé, aucune itération de table de hachage (conventions) ; deux états logiquement égaux se sérialisent en octets identiques.
 - Snapshot = état + version du format + version des données. Reprise : charger et continuer, aucun recalcul (convention 27).
-- **Le journal est hors état** : produit dérivé append-only, reconstituable par rejeu ; le compactage (phase 7) ne touche jamais l'état canonique.
+- **Le journal est hors état** : produit dérivé append-only, reconstituable par rejeu ; le compactage (phase 7) ne touche jamais l'état canonique. La description de scène (spec P1b) est hors état.
 
 ### 13.5 Pseudo-code de la boucle
 
 ```
 boucle principale:
-  J = horloge
-  tant que la file contient un événement de jour ≤ J:
-    e = extraire_min()                    // clé (jour, phase, priorité, id)
-    instant_courant = (e.jour, e.phase)
-    exécuter(e)                           // peut appeler générer()
-  horloge = J + 1                         // fin de journée
+  J = horloge.jour
+  pour C dans [0, 1, 2, 3]:
+    si régime = scène et personnage dans le théâtre:
+      halte_composition_créneau()           // horloge réelle seulement
+    instant_courant = (J, C)
+    tant que la file contient un événement ≤ (J, C):
+      e = extraire_min()                    // clé (jour, créneau, phase, priorité, id)
+      exécuter(e)                           // peut appeler générer()
+  horloge.jour = J + 1                      // fin de journée
+  horloge.créneau = 0
 
 générer(type, payload, date_explicite?):
   date = date_explicite ? date_explicite
                         : prochain_instant(instant_courant)
-  invariant: (date.jour, date.phase) > instant_courant   // sinon rejet
-  insérer { date.jour, date.phase, priorité(type), id: compteur++, type, payload }
+  invariant: (date.jour, date.créneau) > instant_courant   // sinon rejet
+  créneau = date.créneau ?? créneau_naturel(type)          // défaut 0
+  insérer { date.jour, créneau, phase(type), priorité(type), id: compteur++, type, payload }
 
-prochain_instant((j, p)) = (j, p + 1) si p < 7 sinon (j + 1, 1)
+prochain_instant((j, c)) = (j, c + 1) si c < 3 sinon (j + 1, 0)
 ```
 
 ### 13.6 Coût et effet sur les autres couches
@@ -576,7 +591,7 @@ prochain_instant((j, p)) = (j, p + 1) si p < 7 sinon (j + 1, 1)
 
 ### 15.1 Budget de temps (exécution de 6.1)
 
-- Chaque individu nommé résout chaque jour l'arbitrage des 32 demi-heures : besoins d'abord (repas, trajet, corvées), puis travail, puis formation et loisir ; l'ordre de résolution est la doctrine, en données. Les non-nommés sont résolus **en agrégé par cohorte** (mêmes équations, heures moyennes par poste), conformément aux niveaux de détail ; la bulle du joueur est la seule résolution individuelle étendue.
+- Chaque individu nommé résout chaque jour l'arbitrage des 32 demi-heures **positionnées** (chaque demi-heure porte un Usage et un id lieu) : besoins d'abord (repas, trajet, corvées), puis travail, puis formation et loisir ; l'ordre de résolution est la doctrine, en données ; les présences (lieu, créneau) en découlent. Les non-nommés sont résolus **en agrégé par cohorte** (mêmes équations, heures moyennes par poste, présences agrégées par lieu × créneau), conformément aux niveaux de détail ; la bulle du joueur est la seule résolution individuelle étendue.
 - I4 vérifié chaque jour pour chaque nommé et chaque cohorte. Jeûne : −1 demi-heure d'éveil par jour et demi sans nourriture. Garde-fou de calibrage : temps de survie ≤ 12 demi-heures au niveau de vie de référence.
 
 ### 15.2 Consommation et foyer
@@ -856,21 +871,33 @@ prochain_instant((j, p)) = (j, p + 1) si p < 7 sinon (j + 1, 1)
 | T10.3 Plancher | bots après faillite, 5 graines | taux de sortie de misère strictement positif à 5 ans, partout |
 | T10.4 Benchmark | 300 ans simulés, charge réelle | latence et taille de file sous les seuils fixés en 13.6 et 13.7 ; pas de dérive de mémoire |
 
-## 23. Spécification de la tranche 11 : P1b, écrans minimaux
+## 23. Spécification de la tranche 11 : P1b, scène locale et écrans
 
-**Objet** : les écrans du premier jouable (6.7). **Aucun mécanisme nouveau** : les écrans lisent l'état et le journal, et éditent des données déjà existantes (doctrine, planification). Le joueur est un individu standard de la cohorte des journaliers, sans pouvoir spécial.
+**Objet** : le premier jouable immersif (6.7), scindé en 11a (contrat headless) et 11b (rendu et écrans). **Aucun mécanisme économique nouveau** : présence lieu-créneau, scène causale et écrans lisent l'état et le journal, et éditent des données déjà existantes (doctrine, planification, emploi du temps). Le joueur est un individu standard de la cohorte des journaliers, sans pouvoir spécial. Détail normatif : `Docs/spec/P1b - scene locale et immersion - spec.md`.
 
-### 23.1 Écrans
+### 23.1 Tranche 11a — contrat de scène (headless)
 
-- **Doctrine personnelle** : poids entre besoins, travail, formation, reconnaissance ; modèles prédéfinis, pas de script libre ; éditée sur la console portable.
-- **Planification basique** : accepter un poste, choisir une pratique, abonnement d'achat ; décisions fines à pause active, jamais requises.
-- **Vue du quartier** : foyers et individus nommés, états qualitatifs (jamais de jauge numérique de grief), journal causal consultable avec dates d'apprentissage.
-- **Rendu cosmétique des flux de métier** : les trajets et gestes du travail (aller chercher, cuisiner, servir) sont une **peau de présentation** qui lit l'état agrégé, jamais un simulé : présence crénière aux postes, débit de la firme (couverts/demi-journée, goulot de la décision 66) pilote l'animation de flux ; un poste vacant se rend par l'absence, jamais par un sprite animé. L'animation ne lit que l'état, ne l'écrit jamais et ne le contredit pas (même séparation que les répliques : rendu hors état). Aucune simulation par objet ni par trajet.
+- Entité Lieu ; présence nommée et agrégée ; emploi du temps à 32 demi-heures positionnées (Usage + id lieu).
+- Instant logique `(jour, créneau)` ; clé d'ordre `(jour, créneau, phase, priorité, id)` ; créneau naturel en données (défaut 0).
+- `scene(état, journal, instant, observateur) -> DescriptionDeScène` : lecture seule, déterministe, hors état.
+- Figurants tirés des agrégats ; plafond de sprites ; densités mesurées, jamais comblées par du bruit.
+- Tests T11a.1 à T11a.9 (spec P1b §11).
+
+### 23.2 Tranche 11b — rendu et écrans
+
+- **Doctrine personnelle** : poids entre besoins, travail, formation, reconnaissance ; modèles prédéfinis, pas de script libre ; éditée sur la console portable (présence requise).
+- **Planification basique** : accepter un poste, choisir une pratique, abonnement d'achat ; composition du créneau en régime scène ; décisions fines à pause active, jamais requises.
+- **Vue du quartier et promenade** : foyers et individus nommés, états qualitatifs (jamais de jauge numérique de grief), journal causal consultable avec dates d'apprentissage ; marche = rendu pur depuis les présences.
+- **Scène causale** : vignettes = projection du journal et des états ; marqueurs d'état (usure, stocks, files, grève) ; calques de sprite (faim, fatigue, tenue, séquelle, métier).
+- **Rendu cosmétique des flux de métier** : les trajets et gestes du travail sont une **peau de présentation** qui lit l'état agrégé, jamais un simulé : présence crénière aux postes, débit de la firme (goulot, décision 66) pilote l'animation de flux ; un poste vacant se rend par l'absence. L'animation ne lit que l'état, ne l'écrit jamais et ne le contredit pas. Aucune simulation par objet ni par trajet.
+- **Interaction P1 réduit** : observer, demander, témoin direct sous co-présence (spec P1b §6). Parole complète : P1.5.
+- **Régimes de vitesse** : scène, accéléré, saut ; retour automatique sur alerte à forte valeur d'intervention.
 - **Alertes** : classées par valeur d'intervention (cadrage ch. 1) ; le monde continue pendant la consultation, avec pause active possible.
 
-### 23.2 Critères de fermeture (humains, section 12)
+### 23.3 Critères de fermeture
 
-- Un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; aucune attente passive non signalée ; le classement par valeur d'intervention suffit à tenir le joueur informé sans surveillance continue ; latence maximale de quelques secondes par jour de jeu respectée ; revue de palier avec la fiche de revue (convention 24).
+- T11a.1 à T11a.9 verts (headless).
+- T11b.1 (humain, section 12) : un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; co-présence ressentie ; aucune attente passive non signalée ; le classement par valeur d'intervention suffit ; latence maximale de quelques secondes par jour de jeu en accéléré ; revue de palier avec la fiche de revue (convention 24).
 
 ## 24. Répliques, intentions de parole et colportage (P1.5)
 
@@ -984,10 +1011,19 @@ Un rituel est déclenché par un événement de vie, jamais planifié décorativ
 - La fête de quartier est le vecteur du **pain-et-jeux** en P2 (décision 60) : financer une fête achète de la légitimité, à coût réel et rendement décroissant.
 - Test : chaque rituel est traçable à son déclencheur ; les effets sont mesurés (stress des proches après funérailles, retour des occasions sociales après fête) ; aucun rituel sans effet.
 
-## 27. Écran de conversation (P1b)
+## 27. Écran de conversation (P1b minimal, complet en P1.5)
 
-- Le joueur voit l'intention qualitative de l'interlocuteur, l'historique de la conversation, et choisit parmi **les intentions disponibles**, filtrées par le contexte (24.3 : relation, lieu, créneau). La conversation consomme du temps réel de jeu.
-- **Pas de texte libre, pas de minigame** : le déterminisme, la traduction et la symétrie joueur/PNJ l'interdisent. Le joueur choisit une intention et une cible ; le système rend la réplique comme pour un PNJ.
+**P1b (réduit)** — co-présence lieu-créneau obligatoire (spec P1b §6) :
+
+- **Observer** : états visibles sur le sprite ; fiche qualitative selon le niveau de relation.
+- **Demander** : poste, essai, parrainage, ardoise, prêt (surfaces d'actions existantes).
+- **Témoin direct** : événements du lieu courant appris à l'instant via `appris_par`.
+- Pas de texte libre, pas de minigame. Test : une demande utile en moins de dix secondes d'interface.
+
+**P1.5 (complet)** — avec la parole à intention (section 24) :
+
+- Le joueur voit l'intention qualitative de l'interlocuteur, l'historique de la conversation, et choisit parmi **les intentions disponibles**, filtrées par le contexte (24.3 : relation, lieu, créneau). La conversation consomme du temps de créneau.
+- Le joueur choisit une intention et une cible ; le système rend la réplique comme pour un PNJ.
 - **L'écoute passive** : ce qui se dit à portée parvient au joueur avec sa propre date d'apprentissage ; être au bon endroit au bon créneau est une source d'information, pas une corvée.
 - Test : un humain tient une conversation utile en moins de dix secondes d'interface ; aucune option non signalée ; les intentions indisponibles sont grisées avec leur raison.
 
@@ -1019,11 +1055,12 @@ Document de travail pour l'agent de code. Source de vérité : sections 13 (spé
 ### 29.2 Types (pseudo-code)
 
 ```
-struct CléÉvénement { jour: u64, phase: u8, priorité: i32, id: u64 }   // ordre lexicographique total
-struct Événement { clé: CléÉvénement, type: IdType, payload: Payload } // types et priorités en données
+struct CléÉvénement { jour: u64, créneau: u8, phase: u8, priorité: i32, id: u64 }  // ordre lexicographique total
+struct Événement { clé: CléÉvénement, type: IdType, payload: Payload } // types, priorités et créneau naturel en données
 
 struct ÉtatNoyau {
-  horloge: u64,                    // jour courant
+  horloge_jour: u64,               // jour courant
+  horloge_créneau: u8,             // 0..3
   compteur_id: u64,                // monotone, jamais réutilisé
   rng: [ÉtatRng; NB_FLUX],         // un flux déterministe par usage déclaré
   file: TasMin<Événement>,         // ordonné par CléÉvénement
@@ -1031,27 +1068,31 @@ struct ÉtatNoyau {
 }
 ```
 
-La clé est **totale** : l'id unique garantit un ordre sans ex æquo ; le tas n'a jamais besoin de critère de départage supplémentaire.
+La clé est **totale** : l'id unique garantit un ordre sans ex æquo ; le tas n'a jamais besoin de critère de départage supplémentaire. En tranche 1 et jusqu'à l'activation des créneaux naturels, tous les types utilisent créneau 0 (T11a.1).
 
 ### 29.3 API publique
 
 ```
 fn avance_journée(&mut self, systèmes: &mut Systèmes) -> JournalDelta
-    // exécute la boucle de 13.5 pour le jour courant ; retourne les entrées de journal produites
+    // exécute la boucle de 13.5 pour les 4 créneaux du jour courant ; retourne les entrées de journal
+
+fn avance_créneau(&mut self, systèmes: &mut Systèmes) -> JournalDelta
+    // exécute un créneau ; en régime scène, la halte est externe (horloge réelle), hors noyau
 
 fn générer(&mut self, type: IdType, payload: Payload,
            date: Option<(u64, u8)>, instant_courant: (u64, u8)) -> Résultat<(), Rejet>
-    // date absente → prochain_instant(instant_courant) ;
+    // date = (jour, créneau) ; absente → prochain_instant(instant_courant) ;
     // date présente ≤ instant_courant → Rejet (invariant, arrêt du replai) ;
+    // créneau du type = date.créneau ?? créneau_naturel(type) (défaut 0) ;
     // alloue id = compteur_id++, insère dans le tas
 
-fn prochain_instant((j, p)) -> (u64, u8)   // (j, p+1) si p < 7 sinon (j+1, 1)
+fn prochain_instant((j, c)) -> (u64, u8)   // (j, c+1) si c < 3 sinon (j+1, 0)
 
 fn snapshot(&self) -> Bytes                // sérialisation canonique + versions
 fn restaurer(bytes: Bytes) -> ÉtatNoyau    // aucun recalcul
 ```
 
-Les systèmes métier reçoivent l'événement, le traitent, appellent `générer` ; ils ne voient jamais le tas, ne datent rien eux-mêmes et ne peuvent pas extraire.
+Les systèmes métier reçoivent l'événement, le traitent, appellent `générer` ; ils ne voient jamais le tas, ne datent rien eux-mêmes et ne peuvent pas extraire. La description de scène (P1b) n'est pas dans le noyau.
 
 ### 29.4 Sérialisation canonique
 
@@ -1194,7 +1235,8 @@ Document de travail pour l'agent de code. Source de vérité : section 15 (spéc
 ### 31.2 Types (pseudo-code)
 
 ```
-struct EmploiDuTemps { usages: [Usage; 32] }        // une valeur par demi-heure, I4 par construction
+struct EmploiDuTemps { slots: [Slot; 32] }           // une entrée par demi-heure, I4 par construction
+struct Slot { usage: Usage, lieu: IdEntité }        // positionné : dérive la présence (lieu, créneau)
 enum Usage { Sommeil, Repas, Trajet, Corvée, Travail, Soin, Recherche, Loisir, Urgence, Libre }
 
 struct Foyer { id: IdEntité, membres: [IdEntité], stock: u32, stock_basse_qualité: u32 }
@@ -1626,14 +1668,15 @@ fn fin_de_grève(grève, cause) -> ()
 
 ## 36. Ordre de mission : tranches 9 à 11 (vie sociale, suite headless, P1b)
 
-Document de travail pour l'agent de code. Source de vérité : sections 21, 22, 23 (spécifications), 24 (répliques et colportage), 26 (rituels), 27 (écran de conversation), 28 (directives), 12 (critères humains). La tranche 9 est glissable en P1.5 sans casser les tranches 1 à 8 ; l'agent la livre comme un lot autonome.
+Document de travail pour l'agent de code. Source de vérité : sections 21, 22, 23 (spécifications), 24 (répliques et colportage), 26 (rituels), 27 (écran de conversation), 28 (directives), 12 (critères humains), spec P1b. La tranche 9 est glissable en P1.5 sans casser les tranches 1 à 8 ; l'agent la livre comme un lot autonome. La tranche 11 est scindée en 11a (headless) et 11b (rendu).
 
 ### 36.1 Objectif et interdits
 
 - **Tranche 9** : maîtrise et apprentissage événementiels, reconnaissance et valuation des rôles, empathie et contagion, groupes informels, rituels (catalogue 26), vie vitale (naissances agrégées, décès, héritage), répliques et colportage (24).
 - **Tranche 10** : aucun mécanisme nouveau ; suite complète (13 scénarios, 5 bots, 5 graines), observabilité (conventions 26 et 27), benchmark 300 ans.
-- **Tranche 11** : écrans (doctrine, planification, vue quartier, journal, conversation), directives de firme (28).
-- **Interdits** : tout timer d'apprentissage ; tout second registre de souffrance ; toute naissance individuelle (effectifs seulement) ; tout mécanisme dans les tranches 10 et 11 ; tout texte libre ; toute jauge numérique de grief ; la locale dans la simulation.
+- **Tranche 11a** : Lieu, présence, emploi du temps positionné, clé d'ordre avec créneau, contrat `scene` headless, tests T11a.1 à T11a.9 (spec P1b).
+- **Tranche 11b** : promenade de rendu, marqueurs, calques, écrans (doctrine, planification, vue, journal, conversation P1b réduite), directives de firme (28), régimes de vitesse.
+- **Interdits** : tout timer d'apprentissage ; tout second registre de souffrance ; toute naissance individuelle (effectifs seulement) ; tout mécanisme économique dans les tranches 10 et 11 ; coordonnées, trajets simulés, pathfinding ; tout texte libre ; toute jauge numérique de grief ; la locale dans la simulation ; toute vignette sans cause.
 
 ### 36.2 Types (sélection)
 
@@ -1644,6 +1687,9 @@ struct GroupeInformel { id: IdEntité, membres: [IdEntité], lieu_habituel: IdEn
 struct Rituel { type: IdRituel, déclencheur: IdÉvénement, participants: [IdEntité] }
 struct SélectionRéplique { intention: IdIntention, cible: IdEntité, événement: IdÉvénement, contexte: Contexte }
 // Contexte = (niveau_relation, lieu, créneau) : les trois filtres de 24.3, en données
+struct Lieu { id: IdEntité, type: TypeLieu, réf: Option<IdEntité>, ouverture: [bool; 4] }
+struct PrésenceNamed { individu: IdEntité, lieu: IdEntité, créneau: u8 }
+struct DescriptionDeScène { /* hors état ; voir spec P1b */ }
 ```
 
 ### 36.3 API publique (sélection)
@@ -1659,6 +1705,8 @@ fn déclencher_rituel(événement_de_vie) -> Rituel
 fn naissance(cohorte) / fn décès(...) / fn hériter(...)   // I1, transferts déclarés, journalisés
 fn sélectionner_réplique(individu, Q(a)) -> SélectionRéplique      // action Q(a) ; texte rendu hors état
 fn expliquer(id) / fn séries_synthétiques / fn diff / fn reprise_snapshot   // observabilité, tranche 10
+fn scene(état, journal, instant, observateur) -> DescriptionDeScène  // P1b 11a ; lecture seule
+fn composer_créneau(individu, réservations) -> EmploiDuTemps         // P1b ; réserve des demi-heures
 ```
 
 ### 36.4 Étapes de construction (dans l'ordre, chacune fermée par ses tests)
@@ -1673,8 +1721,8 @@ fn expliquer(id) / fn séries_synthétiques / fn diff / fn reprise_snapshot   //
 | 6 | 9 | Répliques, intentions, colportage (24) | T24.1 à T24.7 |
 | 7 | 10 | Suite : 13 scénarios, 5 bots, 5 graines | T10.1 à T10.3 |
 | 8 | 10 | Observabilité + benchmark 300 ans | T10.4 |
-| 9 | 11 | Écrans : doctrine, planification, vue, journal, conversation | critères humains (section 12) |
-| 10 | 11 | Directives de firme (28) | équivalence avec une firme PNJ |
+| 9 | 11a | Clé d'ordre créneau=0, Lieu, présence, `scene` | T11a.1 à T11a.9 |
+| 10 | 11b | Rendu, écrans, conversation P1b réduite, directives (28) | T11b.1 ; équivalence firme PNJ |
 
 ### 36.5 Pièges déclarés (à vérifier en revue de code)
 
@@ -1683,11 +1731,12 @@ fn expliquer(id) / fn séries_synthétiques / fn diff / fn reprise_snapshot   //
 - **Naissances** : effectifs de cohorte ; instancier un enfant comme individu est une faute (décision 47) ; les nommés naissent à l'extraction, vers 14 ans.
 - **Répliques** : la sélection est journalisée, le texte est hors état ; toute chaîne de caractères dans l'état canonique est une faute (décision 51) ; la locale ne touche jamais la simulation (T24.1).
 - **Tranche 10** : tout échec remonte à la tranche fautive ; corriger un mécanisme dans la suite est une faute (décision 48).
-- **Tranche 11** : les écrans ne lisent que l'état et le journal, et éditent des données existantes ; toute règle de gameplay côté écran est une faute (décision 50).
+- **Tranche 11a/11b** : les écrans et `scene` ne lisent que l'état et le journal, et éditent des données existantes ; toute règle de gameplay côté écran est une faute (décision 50) ; toute vignette sans cause est une faute (décision 68) ; toute coordonnée ou trajet simulé est une faute (décision 67).
 - **Vie vitale** : chaque naissance et décès passe par un transfert déclaré (I1) ; l'héritage suit la règle en données, jamais une distribution par défaut codée.
+- **Créneaux naturels** : activer les créneaux ≠ 0 change les replais → validation humaine obligatoire (décision 70, convention 6).
 
 ### 36.6 Critères d'acceptation
 
-- T9.x, T10.x et T24.x verts ; tous les invariants verts sur 5 graines et 13 scénarios ; benchmark 300 ans sous les seuils de la section 25.
-- Critères humains de la section 12 : un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; revue de palier avec la fiche de revue (convention 24).
-- Le joueur n'a aucun pouvoir que les PNJ n'ont pas : la revue vérifie la symétrie des tables, des écrans et des directives.
+- T9.x, T10.x, T24.x et T11a.x verts ; tous les invariants verts sur 5 graines et 13 scénarios ; benchmark 300 ans sous les seuils de la section 25 (avec théâtre, T11a.8).
+- Critères humains T11b.1 / section 12 : un humain joue 30 minutes et comprend pourquoi il s'en sort ou non ; co-présence ressentie ; revue de palier avec la fiche de revue (convention 24).
+- Le joueur n'a aucun pouvoir que les PNJ n'ont pas : la revue vérifie la symétrie des tables, des écrans, de la présence et des directives.

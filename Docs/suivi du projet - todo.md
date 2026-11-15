@@ -6,23 +6,22 @@ type: "text/markdown"
 
 # Vestige : Horizon · Suivi du projet (todo)
 
-*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 12 novembre 2026.*
+*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 15 novembre 2026.*
 
 ---
 
 ## 1. Ce qui est fait
 
 ### Cadrage et conventions
-- Cadrage du 4X **v7.2** (historique v4 → v7.2) : 12 routes approuvées, ch. 17, principe d'information perçue (v6.8), engagement par la prévention (v7.1), gel des enrichissements du quartier + candidate inter-quartiers (v7.2). Sur Drive (à jour).
-- Conventions v2.1 (règles 1-27). Sur Drive (à jour).
+- Cadrage du 4X **v7.8 / v7.8.1** (historique v4 → v7.8.1) : immersion P1b (présence lieu-créneau, scène causale, régimes de vitesse), créneau = index de séquence. Fichier local à jour.
+- Conventions v2.2 (règles 1-33). Sur Drive (à jour).
 
-### Spécification P1 — le quartier vivant (complète)
-- Entités, 7 phases d'événements, mécanismes 6.1 à 6.24, 13 scénarios de choc, invariants I1-I9, données initiales.
-- 11 tranches spécifiées (sections 13-23) avec tests de fermeture.
-- 66 décisions tranchées (dont 64 : engagement sans bonus ni temps donné ; 66 : recettes multi-postes à goulot).
-- Ordres de mission tranches 1 à 11 (sections 29-36) : types, API, étapes, pièges, critères d'acceptation.
-- Calibrage initial consolidé (section 25), rituels, écran de conversation, directives de firme.
-- Sur Drive (à jour).
+### Spécification P1 — le quartier vivant (complète, révisée v7.8.1)
+- Entités (dont Lieu), 7 phases, mécanismes 6.1 à 6.24, 13 scénarios de choc, invariants I1-I9, données initiales.
+- Tranches 1 à 11 spécifiées ; tranche 11 scindée en 11a (contrat scène headless) et 11b (rendu et écrans).
+- 70 décisions tranchées (67-70 : présence, scène pure, théâtre transparent, créneau naturel).
+- Spec dédiée : `Docs/spec/P1b - scene locale et immersion - spec.md`.
+- Calibrage initial consolidé (section 25 + registre à-calibrer T1.6-T1.9, I11.x).
 
 ### Documents de présentation et de travail
 - **Présentation non technique** : « le jeu expliqué à tout le monde » + 2 schémas (paliers, boucle de vie). Sur Drive.
@@ -52,7 +51,11 @@ type: "text/markdown"
 10. **Tranches 2 à 6** : **implémentées** (entities.rs, time.rs, firm.rs, market.rs, credit.rs, labor.rs).
 11. **Tranche 7 — Salaires réels et griefs** : **implémentée** (salary.rs, tests/test_tranche7.rs, 7 tests verts).
 12. **Tranche 8 — Basculements** : **implémentée** (strike.rs, tests/test_tranche8.rs, 9 tests verts).
-13. Tranches 9-11 (vie sociale, suite headless, P1b minimal) : à lancer.
+13. Tranches 9-11 (vie sociale, suite headless, P1b scène) : à lancer après clôture correctif T7-T8 ; 11a headless avant 11b rendu.
+14. **Écarts d'implémentation à traiter** (signalés, non corrigés dans cette session) :
+    - `TimeBudget` (`src/time.rs`) tient des durées par usage ; la spec §31.2 demande 32 demi-heures positionnées (Usage + lieu).
+    - Aucune entité `Lieu` dans `src/` pour l'instant.
+15. **Hors plan / hors mode JEU** : pointeurs `AGENTS.md`, `Agents/DEV-JEU.md`, `Agents/memoire-vive.md` vers cadrage v7.7 (supprimé) → mode PILOTAGE ; choix de la bibliothèque de rendu (dépendance nouvelle) ; licence assets (CC0 recommandé).
 
 ### Points ouverts plus lointains (rappel)
 - Deuil comme arrêt indemnisé ou non (P2, fiscalité) ; registres de langue par cohorte ; taille du corpus de répliques par intention ; moment où l'incitation devient organisation (P2) ; partage d'idées et dérive culturelle (route 6) ; calibrage de la reconnaissance (ch. 13) ; tout le palier P2 et au-delà.
@@ -73,16 +76,21 @@ type: "text/markdown"
 | v7.5 | Consolidation route 6 : culture = paquet de données porté par les cohortes ; naissance par divergence (seuil de distance culturelle à calibrer, jumeau lent du seuil de faction) ; canaux tous existants (exposition, institutions κ, générations, migrations, chocs, dissonance morale) ; lecture avec retard, jamais de jauge |
 | v7.6 | Rendu : grammaire architecturale = projection du vecteur culturel (tables en données) ; origine par fonction de fondation (contrainte devenue identité) ; dérive à trois vitesses (ornement/matériaux/masses) ; chocs matériels → boucle contrainte-tradition ; coût simulation nul |
 | v7.7 | Influence mutuelle des cultures : uniquement par contact individuel pondéré au statut perçu (soft power émergent) ; dissonance morale séduit ou raidit ; pureté culturelle = position doctrinale (institutions κ, factions) ; convergence en gradient de vitesses |
+| v7.8 | Revue de cohérence : griefs en années, fonction « explique », paliers reconstitués, localisation, ch. 18 gel de générateur |
+| v7.8.1 | Immersion P1b : créneau = instant logique ; présence lieu-créneau ; scène causale ; trois régimes de vitesse ; vue détaillée du service reste P2 ; décisions 67-70 ; spec P1b |
 
 ## 5. Inventaire des documents (Drive, dossier « Vestige horizon »)
 
 | Document | État |
 | --- | --- |
-| Cadrage v7.7 | À jour |
-| Conventions v2.1 | À jour |
-| Spec P1 (quartier vivant) | À jour |
-| Présentation non technique | À jour (vivant) |
+| Cadrage v7.8 / v7.8.1 | À jour (local) |
+| Conventions v2.2 | À jour |
+| Spec P1 (quartier vivant) | À jour (révisée immersion) |
+| Spec P1b (scène locale et immersion) | À jour (nouveau) |
+| Présentation non technique | À actualiser (mention P1b) |
 | Doc de travail révoltes/factions/révolutions | À jour (vivant) |
 | Doc de travail économie spatiale | À jour (vivant) |
-| Registre de complétude | À jour (à actualiser chaque session) |
-| Suivi du projet (ce document) | À jour (à actualiser chaque session) |
+| Registre de complétude | À jour |
+| Registre consolidé à-calibrer | À jour (T1.6-T1.9, I11.x) |
+| Matrice spec-tests | À jour (section T11a/T11b) |
+| Suivi du projet (ce document) | À jour |

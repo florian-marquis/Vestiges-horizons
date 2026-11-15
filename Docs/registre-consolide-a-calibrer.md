@@ -23,8 +23,12 @@
 | T1.1 | Nombre de demi-heures par jour | 32 | spec P1 §4 | **À calibrer** | P1 | Équilibre temps de survie (≤12h/jour) |
 | T1.2 | Perte d'éveil par jeûne | 1 demi-heure/jour et demi de jeûne | spec P1 §4.3 | **À calibrer** | P1 | Scénario 7 (chute salaire réel) |
 | T1.3 | Fatigue supplémentaire (travail de nuit) | +1 demi-heure de fatigue par créneau de nuit | spec P1 §4.3 | **À calibrer** | P1.5 | Scénario 8 (grève) |
-| T1.4 | Nombre de créneaux par jour | 4 (matin, après-midi, soir, nuit) | spec P1 §4.3 | **Validé** | P1 | Déjà implémenté dans les données |
+| T1.4 | Nombre de créneaux par jour | 4 (matin, après-midi, soir, nuit) | spec P1 §4.3 ; v7.8.1 | **Validé** | P1 | Instant logique, pas simple étiquette |
 | T1.5 | Jours par mois | 30 | spec P1 §8 | **À calibrer** | P1 | Calendrier pour le rendu (hors état canonique) |
+| T1.6 | Durée réelle d'un créneau (régime scène) | 45 à 90 s | spec P1b §12 | **À calibrer** | P1b | T11b.1 |
+| T1.7 | Durée réelle d'un jour (accéléré) | 5 à 10 s | spec P1b §12 | **À calibrer** | P1b | T11a.8 |
+| T1.8 | Coût temporel d'un changement de lieu | 1 demi-heure | spec P1b §12 | **À calibrer** | P1b | T11a.5 |
+| T1.9 | Créneau naturel par type d'événement | table en données (défaut 0) | spec P1b §12 ; décision 70 | **À calibrer** | P1b | T11a.1 puis validation humaine (convention 6) |
 
 ---
 
@@ -199,11 +203,23 @@
 
 ---
 
+## 11. Immersion P1b (scène locale)
+
+| ID | Paramètre | Valeur actuelle | Origine | Statut | Palier | Tests |
+|----|-----------|------------------|---------|--------|--------|-------|
+| I11.1 | Plafond de sprites par lieu | 24 | spec P1b §12 | **À calibrer** | P1b | T11a.4, T11a.7 |
+| I11.2 | Densité minimale de vignettes / créneau (lieu joueur) | ≥ 1 en non-choc | spec P1b §12 | **À calibrer** | P1b | T11a.9 |
+| I11.3 | Traversée du quartier à pied | ≤ 30 s réelles | spec P1b §12 | **À calibrer** | P1b | T11b.1 |
+| I11.4 | Licence packs d'assets | CC0 recommandé | cadrage ch. 12 | **Ouvert** | P1b | Lot de 10 assets |
+
+---
+
 ## 📝 Historique des modifications
 
 | Date | Modification | Auteur | Motif |
 |------|--------------|--------|-------|
 | 2024-11-13 | Création du registre consolidé | Agent | Fusion des valeurs de spec P1 et documents annexes |
+| 2026-11-15 | Ajout T1.6-T1.9 et section 11 (immersion P1b) | Agent | Spec P1b / v7.8.1 |
 
 ---
 
@@ -213,6 +229,7 @@
 - **spec P1 §5** : F5.2.1, F5.2.2, S6.1.3, S6.1.4, S6.2.1, S6.2.2, C9.1
 - **spec P1 §6** : S6.1.3, S6.1.4, S8.7
 - **spec P1 §8** : Tous les paramètres de données initiales
+- **spec P1b** : T1.6, T1.7, T1.8, T1.9, I11.1, I11.2, I11.3, I11.4
 - **À vérifier** : Documents de travail révoltes/factions et économie spatiale
 
 ---

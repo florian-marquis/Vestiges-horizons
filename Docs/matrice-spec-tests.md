@@ -281,10 +281,37 @@ Aucune - la couverture de la section 17.2 est maintenant à 86%
 
 ---
 
+## Section 23 / Spec P1b : Tranche 11 (scène locale)
+
+### 23.1 / 11a — Contrat de scène (headless)
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Instant (jour, créneau), clé d'ordre | P1 §13 ; P1b §5 | lib.rs (à adapter) | T11a.1 | ❌ | Créneau=0 d'abord |
+| Transparence du théâtre | P1b §5.4 | — | T11a.2 | ❌ | |
+| `scene` lecture seule | P1b §7.4 | — | T11a.3 | ❌ | |
+| Non-contradiction sprites = présence | P1b §4, §13 | — | T11a.4 | ❌ | |
+| Symétrie joueur / bot | P1b §4.2 | — | T11a.5 | ❌ | |
+| Témoin direct, non-fuite | P1b §6.4 | — | T11a.6 | ❌ | |
+| Coût indépendant de la population | P1b §7.4 | — | T11a.7 | ❌ | |
+| Benchmark théâtre 300 ans | P1b §11 | — | T11a.8 | ❌ | |
+| Densité de vignettes | P1b §7.3 | — | T11a.9 | ❌ | |
+
+### 23.2 / 11b — Rendu et écrans
+
+| Élément | Spec | Module | Tests | Statut | Notes |
+|---------|------|--------|-------|--------|-------|
+| Promenade, marqueurs, calques | P1b §8 | rendu (biblio 🟥) | T11b.1 | ❌ | Choix humain |
+| Conversation P1b réduite | P1 §27 ; P1b §6 | — | T11b.1 | ❌ | |
+| Directives de firme | P1 §28 | — | équivalence PNJ | ❌ | |
+
+---
+
 ## Historique des mises à jour
 
 | Date | Section | Action | Auteur |
 |------|---------|--------|--------|
+| 2026-11-15 | 23 / P1b | Ajout couverture T11a/T11b (specs immersion) | Agent IA |
 | 2024-11-14 | 17.2 | Correction de la formule de prix de référence | Agent IA |
 | 2024-11-14 | Tous | Ajout des vérifications I9 | Agent IA |
 | 2024-11-14 | Tous | Ajout des tests d'invariants | Agent IA |

@@ -69,17 +69,32 @@ type: "text/markdown"
 | Reconnaissance, valuation des rôles par curseurs | ⬛/🟦 | Spec P1 ; calibrage du ch. 13 🟥 |
 | Scalaire « diversité accessible » de la ville | 🟥 | Écarté sauf problème mesuré à P1b |
 
-## 4. P1.5 (enrichissements du quartier)
+## 4. P1b — scène locale et immersion (v7.8.1)
+
+| Mécanisme | Statut | Où / prochaine étape |
+| --- | --- | --- |
+| Présence (lieu, créneau), Lieu comme entité | ⬛ | Spec P1b ; spec P1 §4, §6.7, décisions 67-70 |
+| Instant logique (jour, créneau), clé d'ordre | ⬛ | Spec P1 §3, §5, §13 ; cadrage v7.8.1 ch. 14 |
+| Contrat headless `scene(...)` | ⬛ | Spec P1b §7 ; tests T11a.1-T11a.9 |
+| Mise en scène causale (vignettes, figurants) | ⬛ | Spec P1b §7 ; densité 🟥 à calibrer (T11a.9) |
+| Interaction P1 réduit (observer, demander, témoin) | ⬛ | Spec P1b §6 ; conversation complète → P1.5 |
+| Régimes de vitesse (scène, accéléré, saut) | ⬛ | Spec P1b §5.3 ; cadrage ch. 13 ; durées 🟥 |
+| Promenade de rendu, marqueurs, calques sprite | ⬛ | Spec P1b §8 ; rendu 11b ; biblio de rendu 🟥 (choix humain) |
+| Rendu cosmétique des flux de métier | ⬛ | Spec P1 section 23 |
+| Densité minimale de scènes (test P1b) | ⬛ (mesure 🟥) | Spec P1b §7.3, §12 ; à mesurer T11a.9 |
+| Emploi du temps positionné (32 slots Usage+lieu) | ⬛ | Spec P1 §15.1, §31.2 ; écart code : TimeBudget non positionné |
+
+## 5. P1.5 (enrichissements du quartier)
 
 | Mécanisme | Statut | Où / prochaine étape |
 | --- | --- | --- |
 | Couplage des créneaux (fréquentation, équipes tournantes, lits chauds) | 🟦 | Cadré v6.6 ; à spécifier |
 | Estaminet | 🟦 | Cadré v6.9 ; à spécifier |
 | Information perçue (un décideur ne voit que ce qui lui parvient) | 🟦/⬛ | Cadré v6.8, dates d'apprentissage au journal ; à spécifier |
-| Rendu cosmétique des flux de métier | ⬛ | Spec P1 section 23 |
-| Densité minimale de scènes (test P1b) | 🟥 | À mesurer à P1b |
+| Parole à intention complète, écoute passive | ⬛ | Spec P1 §24, §27 (P1.5) ; s'appuie sur la présence P1b |
+| Portraits modulaires | 🟦 | Cadrage ch. 13 ; P1.5 |
 
-## 5. Palier P2 — le bassin (cadré, non spécifié)
+## 6. Palier P2 — le bassin (cadré, non spécifié)
 
 | Mécanisme | Statut | Où / prochaine étape |
 | --- | --- | --- |
@@ -104,7 +119,7 @@ type: "text/markdown"
 | Consoles, modèle réseau, délégation | 🟦 | Cadrage ch. 15 |
 | Incitation → organisation | 🟥 | Ouvert (P2) |
 
-## 6. Palier P3 — monde, système, empire (cadré et réfléchi)
+## 7. Palier P3 — monde, système, empire (cadré et réfléchi)
 
 | Mécanisme | Statut | Où / prochaine étape |
 | --- | --- | --- |
@@ -117,7 +132,7 @@ type: "text/markdown"
 | Seuil de scission culturelle (distance → deux cultures) | 🟥 | À calibrer en P2/P3, avec le seuil de déclaration de faction |
 | Calibrage de rareté des crises | 🟥 | À écrire comme critère d'acceptation dès la spec |
 
-## 7. Transversal
+## 8. Transversal
 
 | Mécanisme | Statut | Où / prochaine étape |
 | --- | --- | --- |
@@ -136,12 +151,12 @@ type: "text/markdown"
 
 ---
 
-## 8. Comptage (à actualiser à chaque session)
+## 9. Comptage (à actualiser à chaque session)
 
-- Spécifié ⬛ : le noyau complet, tout le P1 (24 mécanismes), P1b, une partie du P1.5.
+- Spécifié ⬛ : le noyau complet, tout le P1 (24 mécanismes), P1b scène locale (v7.8.1), une partie du P1.5.
 - Cadré 🟦 : routes 1 à 12, paliers P2 et P3 en directions.
 - Réfléchi 🟨 : révoltes/factions/révolutions, économie spatiale, bassin.
-- Ouvert 🟥 : ~20 questions listées ci-dessus, chacune datée d'un palier.
-- Calibré ✅ : rien — tout le calibrage attend la tranche 10 (P1) et les paliers suivants.
+- Ouvert 🟥 : ~20 questions listées ci-dessus, chacune datée d'un palier ; biblio de rendu et licence assets ; pointeurs Agents vers v7.7 (mode PILOTAGE).
+- Calibré ✅ : rien — tout le calibrage attend les tranches 10 et 11a.
 
 *Prochaines lignes à faire passer en ⬛ : P1.5 (créneaux couplés, estaminet, information perçue), puis le bassin P2 quand la feuille de route des révoltes sera tranchée.*
