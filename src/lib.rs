@@ -27,6 +27,7 @@ pub mod meal;
 pub mod labor;
 pub mod salary;
 pub mod strike;
+pub mod replai_gen;
 
 // ============================================================================
 // TYPES DE BASE
