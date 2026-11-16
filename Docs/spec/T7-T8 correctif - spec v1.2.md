@@ -45,7 +45,7 @@ Cette tranche ne définit ni bandes de risque, ni taux `λ`, ni tirage de seuil,
 
 1. **Conversion exacte :** `u=1000, p=q=0` donne une pente de `90 000` µpt/jour.
 2. **Critère de pénurie totale :** depuis `G=0`, `u=1000` donne `99 990 000` µpt après 1 111 jours, puis atteint le plafond après 1 112 jours.
-3. **Critère de pénurie partielle :** depuis `G=0`, `u=300` atteint le plafond après 3 704 jours, dans la cible de 8 à 12 ans.
+3. **Critère de pénurie partielle :** depuis `G=0`, `u=300, p=q=0` atteint le plafond après 3 704 jours, dans la cible de 8 à 12 ans.
 4. **Apaisement :** depuis le plafond, `q=1000, u=p=0` laisse `10 000` µpt après 3 333 jours et atteint zéro au jour 3 334, dans la cible de 6 à 10 ans.
 5. **Temps intrajournalier :** une journée complète correspond à quatre créneaux ; intégrer séparément chaque créneau donne le même résultat qu'une avance directe sur les mêmes entrées.
 6. **Changements d'entrée :** une séquence de changements à différents créneaux est identique à un oracle pas-à-pas indépendant, y compris quand plusieurs entrées changent le même jour.
@@ -58,6 +58,15 @@ Cette tranche ne définit ni bandes de risque, ni taux `λ`, ni tirage de seuil,
 Les conditions techniques de fermeture de la tranche A sont satisfaites : le chemin T7 utilise un seul état canonique, les tests passent et les replais T1-T5 restent identiques. Aucun replai de référence n'a été régénéré.
 
 Le benchmark T7-T8 reste un signal à examiner avant de valider le comportement des grèves : il compte 18 250 déclenchements sur 18 250 vérifications (5 cohortes sur 3 650 jours). Ce résultat n'est pas une validation du calibrage du risque ou des grèves, qui reste hors périmètre de la tranche A.
+
+### Observabilité du calibrage dans le quartier
+
+Avant de conclure sur le comportement de G dans le quartier P1, un benchmark headless de 10 ans devra présenter, pour chaque cohorte, une ligne contenant :
+
+| Cohorte | q min. | q moyen | q max. | Jours G=0 | Jours 0<G<100 | Jours G=100 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+
+Ce tableau est un diagnostic destiné à la revue humaine, pas un critère de réussite : aucun seuil n'est fixé avant d'avoir observé les résultats. Les valeurs de `q` doivent provenir de l'état réel du quartier P1, et non d'une série synthétique. Le benchmark P1 actuel ne simule que le marché; le benchmark T7-T8 utilise des entrées synthétiques et ne peut donc pas fournir ce résultat.
 
 ### Décision à présenter avant la tranche B
 
