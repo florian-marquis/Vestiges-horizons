@@ -570,6 +570,24 @@ impl DispensaryQueue {
         let days = self.patients.len() as f32 / self.capacity as f32;
         days.ceil() as u32
     }
+
+    /// Calcule le taux de service des soins en millièmes [0, 1000]
+    ///
+    /// Formule : patients servis sur les patients demandeurs, en millièmes.
+    /// - Si aucun patient ne demande de soin, retourne 1000
+    /// - Sinon, les soins servis sont bornés par la capacité quotidienne
+    /// - Résultat dans [0, 1000]
+    ///
+    /// @returns Taux de service en millièmes
+    pub fn calculate_service_rate(&self) -> u16 {
+        let demand = self.patients.len() as u64;
+        if demand == 0 {
+            return 1000;
+        }
+
+        let treated = demand.min(u64::from(self.capacity));
+        ((treated * 1000) / demand) as u16
+    }
 }
 
 impl Default for DispensaryQueue {

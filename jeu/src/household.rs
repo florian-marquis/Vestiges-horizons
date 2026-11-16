@@ -264,6 +264,18 @@ impl Household {
             .map(|&member| (member, per_member))
             .collect()
     }
+
+    /// Calcule u (besoins alimentaires non servis / demande) pour ce foyer
+    ///
+    /// Formule (spec T7-T8 A2 §3) :
+    /// - u = 0 si stock > 0 ou demande == 0
+    /// - u = ((non_servis * 1000) / demande).min(1000) sinon (troncature entière)
+    ///
+    /// @param besoin_total Besoin total en nourriture pour le foyer
+    /// @returns u en millièmes [0, 1000]
+    pub fn calculate_u(&self, besoin_total: u32) -> u16 {
+        crate::inputs::calculate_u_from_household(self.total_food(), besoin_total)
+    }
 }
 
 // ============================================================================

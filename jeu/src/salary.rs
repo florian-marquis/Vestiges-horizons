@@ -113,6 +113,20 @@ impl SalaireReelEtGriefs {
         self.salaire_reel = numerator / self.cout_panier;
     }
     
+    /// Calcule p (pression des prix) pour cette entité
+    ///
+    /// Formule (spec P1 §6.2, corrigée) :
+    /// - p = 0 si cout_panier == 0 OU revenu_disponible >= cout_panier
+    /// - p = ((cout_panier - revenu_disponible) * 1000) / cout_panier sinon (troncature entière)
+    /// - Résultat dans [0, 1000]
+    ///
+    /// @param revenu_disponible Revenu disponible en centimes (par défaut : salaire_horaire * heures_travaillees)
+    /// @returns p en millièmes [0, 1000]
+    pub fn calculate_p(&self, revenu_disponible: Option<u64>) -> u16 {
+        let rev = revenu_disponible.unwrap_or(self.salaire_horaire * self.heures_travaillees as u64);
+        crate::inputs::calculate_p(self.cout_panier, rev)
+    }
+
     /// Calcule la pente en micro-points de griefs par jour.
     pub fn calculer_dg(&self) -> i64 {
         self.griefs.slope_micro_points_per_day()

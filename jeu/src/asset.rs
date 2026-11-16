@@ -128,6 +128,27 @@ impl Asset {
         state as i32
     }
     
+    /// Calcule le taux de service de l'actif pour la composante logements de q
+    ///
+    /// Formule : taux = min(state / MAX_INITIAL_STATE * 1000, 1000)
+    /// où state = current_state(current_day)
+    ///
+    /// @param current_day Jour courant
+    /// @returns Taux de service en millièmes [0, 1000]
+    pub fn calculate_maintenance_rate(&self, current_day: i64) -> u16 {
+        let state = self.current_state(current_day);
+        if state <= 0 {
+            return 0;
+        }
+
+        // state est dans [0, initial_state] où initial_state <= 1000
+        // On normalise à [0, 1000]
+        let numerator = state as u64 * 1000;
+        let result = (numerator / MAX_INITIAL_STATE as u64) as u16;
+
+        result.min(1000)
+    }
+
     /// Retourne le taux d'usure effectif (modifié par la politique d'entretien)
     /// 
     /// Utilise l'arithmétique entière : wear_rate * modifier * 1000 / 1000
