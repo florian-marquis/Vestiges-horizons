@@ -59,4 +59,14 @@ Les conditions techniques de fermeture de la tranche A sont satisfaites : le che
 
 Le benchmark T7-T8 reste un signal à examiner avant de valider le comportement des grèves : il compte 18 250 déclenchements sur 18 250 vérifications (5 cohortes sur 3 650 jours). Ce résultat n'est pas une validation du calibrage du risque ou des grèves, qui reste hors périmètre de la tranche A.
 
-Avant la tranche B, spécifier et faire valider la formule exacte du taux de risque, en conservant ses entrées P1 : `G`, salaire réel et moyens de la cohorte. La question du double comptage avec `p` doit être résolue dans cette spécification. Avant la tranche D, spécifier les transitions et bornes de la représentation `G + δ`, notamment la conservation du total pendant l'extraction/réinjection et la sémantique de la population totale.
+### Décision à présenter avant la tranche B
+
+La tranche B déterminera quand une grève devient plus probable. Avant de la coder, présenter la proposition en mots simples et demander si les effets correspondent à l'intention :
+
+- quand les griefs augmentent, est-ce que le risque de grève évolue comme attendu ?
+- quand le salaire permet moins bien de couvrir les besoins, est-ce que le risque évolue comme attendu ?
+- les moyens de la cohorte sont-ils pris en compte sans compter deux fois la hausse des prix ?
+
+Montrer quelques situations concrètes et leur résultat attendu, sans demander à la personne de vérifier la formule ou le code. Elle doit pouvoir répondre simplement : « oui, cela correspond », « non, voici ce qui ne convient pas » ou « je ne sais pas encore ». La formule exacte et ses preuves techniques restent dans la spécification.
+
+Avant la tranche D, spécifier les transitions et bornes de la représentation `G + δ`, notamment la conservation du total pendant l'extraction/réinjection et la sémantique de la population totale. Présenter aussi cette décision à l'humain par ses effets concrets, selon la convention 34.

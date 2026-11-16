@@ -58,10 +58,12 @@ Document court, à fournir à Cursor en contexte système. Le cadrage reste la s
 31. **Synchronisation** : `git pull` au début de chaque session pour intégrer les changements distants. `git push` après chaque commit local pour partager les modifications.
 32. **Interdiction des force-push** : Aucun `git push --force` ou `--force-with-lease` sans validation humaine explicite et documentée.
 33. **Atomicité des commits** : Un commit doit être atomique (un seul changement logique) et laisser le code dans un état compilable et testable. Si un changement casse les tests, il doit être corrigé avant le commit.
+34. **Validation humaine compréhensible** : Toute demande de décision à l'humain est formulée en français courant, sans jargon non expliqué. Elle commence par dire ce qui va changer et ce que la personne doit vérifier. Elle montre des exemples concrets du résultat attendu, distingue les faits vérifiés des choix de conception, et pose une question à laquelle on peut répondre sans lire le code ni recalculer une formule. Si plusieurs options existent, leurs effets visibles sont expliqués. La réponse attendue est explicite (par exemple : « oui, cela correspond », « non, voici ce qui ne convient pas » ou « je ne sais pas encore »). Les détails techniques restent disponibles en référence, mais ne sont pas un prérequis à la décision.
 
 ## Historique des versions
 
 - **v2.2** (2025-01-XX) : Ajout des règles 28-33 (gestion de version et git).
+- **v2.3** (2026-11-16) : Ajout de la règle 34 pour rendre les demandes de validation humaine faciles à comprendre et à vérifier.
 - **v2.1** (2024-11-13) : Ajout des règles 26-27 (arithmétique et observabilité).
 - **v2.0** (2024-11-XX) : Ajout des règles 18-25 (déterminisme et validation).
 - **v1.0** (2024-11-XX) : Version initiale (règles 1-17).
