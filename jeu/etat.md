@@ -9,7 +9,7 @@ T7-T8 · Tranche A2 — Phase 1 : implémenter les sources réelles de `u`, `p`,
   4. **Architecture et interdits** : fichier unique `jeu/src/inputs.rs`, exposé dans `jeu/src/lib.rs`. Interdiction stricte de modifier `src/strike.rs`, le calcul de risque dans `src/salary.rs`, ou les replais JSON de référence.
 - **Revue Pilote du Lot 1 (`@agent3` Mistral Vibe)** :
   - `cargo test` vert (117 lib + 28 `test_inputs` + 3 `test_replais` + tranches 2/3/4/5/7/8) et `src/strike.rs`, risque dans `src/salary.rs`, `src/replai/*.json` intacts.
-  - **2 ajustements mineurs requis pendant le Lot 2 (ou pris en charge dans Lot 2)** :
+  - **2 ajustements mineurs repris et terminés pendant le Lot 2** :
     1. `DispensaryQueue::calculate_service_rate()` dans `health.rs` calcule `(capacity - queue.len()) / capacity` (il tombe à 0 si `queue.len() >= capacity` alors qu'un dispensaire de capacité 10 sert bien 10 patients/jour sur une file de 10 !). Or la sémantique réelle est : si `patients_en_attente == 0` → `1000` ; sinon s'il y a `N` patients demandeurs, servis = `min(capacity, N)` → taux = `(min(capacity, N) * 1000 / N)`. Corriger en vérifiant s'il faut distinguer `demande_soins` vs `queue.len()` (ou si `capacity` sert jusqu'à `capacity` patients parmi `patients_en_attente + traites`).
     2. Dans `inputs.rs`, ajouter un test #6 statique réel (par ex. qui lit `src/inputs.rs` et vérifie `!source.contains("f64") && !source.contains("exp(")`) et un émetteur sur franchissement de seuil (`InputTracker` ou fonction qui n'émet `InputChanged` que si `(u, p, q)` a changé au moins d'1 millième, au plus 1 fois par cohorte et par créneau — cf. ordre de mission §3).
 - Plan Lot 2 validé par le Pilote (`seq=4`) : binaire dédié `src/bin/quartier_10ans.rs`, graine 42, 3 650 jours, choc 2 réel, tableau spec v1.2 §5 + tests #3, #7, #8.
@@ -29,10 +29,11 @@ T7-T8 · Tranche A2 — Phase 1 : implémenter les sources réelles de `u`, `p`,
 | 4 | 500 | 524,6 | 800 | 3650 | 0 | 0 | 308 | 29 | 29 |
 
 Rupture du stock partagé : 31 jours sur 3 650. La couverture complète revient au jour 293 (stock avant achats : 550).
+- Revue Pilote Lot 2 (seq 11) : validée ; suites complètes vertes, bin `quartier_10ans` vérifié, chemins u/p/q sans flottants/`exp()`, interdits et replais de référence intacts.
 - Répartition des rôles Duo :
   - `@pilote` (VS Code) : Architecte (lecture seule sur `jeu/src/`, pilotage et revue).
   - `@agent1` (Cursor) : Secours / escalade uniquement.
-  - `@agent2` (GitHub Copilot Fusion, VS Code) : **`Rédacteur actuel`** pour Lot 2 + 2 corrections mineures du Lot 1.
+  - `@agent2` (GitHub Copilot Fusion, VS Code) : Lot 2 terminé et validé par le Pilote.
   - `@agent3` (Mistral Vibe, VS Code) : En veille (lecture seule / relecture si demandé).
 
 # TODO
@@ -44,7 +45,7 @@ Rupture du stock partagé : 31 jours sur 3 650. La couverture complète revient 
   3. Tests #3/#7 verts ; #8 vérifié via `test_replais` et `cargo test` complet. Tableau et bilan prêts pour le Pilote.
 
 # Rédacteur actuel
-@agent2
+@agent2 (tâche terminée, en attente du STOP humain)
 
 # Destinataire suivant
-@pilote
+humain
