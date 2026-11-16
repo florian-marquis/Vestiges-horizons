@@ -120,6 +120,6 @@ La hiérarchie spatiale complète : **quartier → bassin (ville ou station) →
 
 ## 9. Lien avec les autres documents
 
-- Cadrage (v7.7) : chaîne de production et logistique (chapitres 8 et 9), latence (ch. 15), routes 10, 11, 12, question ouverte « qui construit les stations » ; ch. 12 v7.3-v7.4 (cohérence de génération, grammaire architecturale, manifeste → prompts) ; consolidation culturelle v7.5-v7.7 (l'architecture comme projection de la culture, dialectes culture × biome).
+- Cadrage (v7.8, révision v7.8.1) : chaîne de production et logistique (chapitres 8 et 9), latence (ch. 15), routes 10, 11, 12, question ouverte « qui construit les stations » ; ch. 12 v7.3-v7.4 (cohérence de génération, grammaire architecturale, manifeste → prompts) ; consolidation culturelle v7.5-v7.7 (l'architecture comme projection de la culture, dialectes culture × biome).
 - Spec P1 : 6.15 (métiers, recettes, goulots), décision 66, section 25 (calibrage).
 - Document de travail « Révoltes, factions et révolutions » : la clôture comme amplificateur d'identité (3.1), la latence comme générateur d'identité (section 3), la guerre civile comme guerre de nœuds.

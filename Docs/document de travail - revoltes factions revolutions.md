@@ -146,6 +146,6 @@ Dans l'ordre de dépendance :
 
 ## 13. Lien avec les autres documents
 
-- Cadrage (v7.7) : routes 2, 3, 6, 7, 8, 10, 11, 12 ; chapitres 2 (griefs), 4 (anti-sclérose), 15 (latence), 17 (routes approuvées) ; tranché v6.5 (causalité visible) ; consolidations culturelles v7.5-v7.7 (contenu d'une culture, naissance par divergence, influence mutuelle par contact, pureté culturelle) — la déclaration de faction de la section 5 est le processus commun aux cultures et aux factions (deux vitesses).
+- Cadrage (v7.8, révision v7.8.1) : routes 2, 3, 6, 7, 8, 10, 11, 12 ; chapitres 2 (griefs), 4 (anti-sclérose), 15 (latence), 17 (routes approuvées) ; tranché v6.5 (causalité visible) ; consolidations culturelles v7.5-v7.7 (contenu d'une culture, naissance par divergence, influence mutuelle par contact, pureté culturelle) — la déclaration de faction de la section 5 est le processus commun aux cultures et aux factions (deux vitesses).
 - Spec P1 : tranche 8 (griefs et basculements, section 19), 6.20 (traits du décideur, engagement), section 25 (calibrage).
 - Ce document alimente la future route candidate « révoltes, factions et révolutions » (entrée P2, maturité P3), à rédiger au cadrage quand la feuille de route ci-dessus sera tranchée.

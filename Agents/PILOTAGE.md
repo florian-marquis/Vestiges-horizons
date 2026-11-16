@@ -1,24 +1,38 @@
 # PILOTAGE — Processus de travail sur le système d'instruction des agents
 
-Ce fichier s'applique en mode PILOTAGE (voir `AGENTS.md`, section 2). Le projet courant est le système d'instruction lui-même : on conçoit, corrige et versionne la façon dont les agents IA travaillent sur ce dépôt. Le jeu n'est pas touché dans ce mode.
+Ce fichier s'applique en mode PILOTAGE (voir `AGENTS.md` à la racine). Le projet courant est le système d'instruction et le pilotage macro-architectural : on conçoit, corrige et versionne la façon dont les agents IA travaillent sur ce dépôt. Le code du jeu dans `jeu/` n'est jamais modifié en direct depuis ce workspace (accès en lecture seule).
 
 ## 1. Périmètre
 
-- **Dans le périmètre** : `AGENTS.md`, tout le dossier `Agents/`, les `Docs/Conventions du projet (pour agents).md` (proposition de l'agent, validation humaine pour les changements de fond), et tout nouveau fichier d'instruction ou de protocole.
-- **Hors périmètre** : code du jeu, specs de palier, cadrage, documents de travail de design.
+- **Dans le périmètre** : `AGENTS.md` (racine), `agents/`, `docs/`, les `jeu/Docs/Conventions du projet (pour agents).md` (proposition de l'agent, validation humaine pour les changements de fond), l'outillage de coordination multi-agents (`multiagents/`, `.cursor/skills/duo-salon/SKILL.md`) et tout nouveau fichier d'instruction ou de protocole.
+- **Hors périmètre en modification directe** : code source du jeu (`jeu/src/`, `jeu/tests/`, `jeu/benches/`, `jeu/Cargo.toml`), réservé aux sous-agents d'implémentation après génération de tickets.
+
+**Distinction des rôles de pilotage** :
+- **`agents/PILOTAGE.md`** : Gouvernance des instructions, conventions et architecture documentaire.
+- **`multiagents/docs/PILOTE.md`** : Coordination opérationnelle temps réel d'un salon multi-agents Duo (`Pilote` + `Agent 1..N`) travaillant sur `jeu/`.
 
 **Périmètre précis** :
-- **`PILOTAGE.md`** : Gère les **règles globales** (conventions, processus) qui impactent **toutes les sessions** (ex. : nouvelle convention dans `Docs/Conventions du projet (pour agents).md`).
-- **`PROTOCOLE-ERREURS.md`** : Gère les **solutions locales** (problèmes ponctuels, mémoire vive) ou les **règles liées aux erreurs**.
-  *Une règle qui modifie le comportement des agents pour toutes les tâches (ex. : "Toujours spécifier les invariants avant de coder") relève de `PILOTAGE.md`. Une solution à un bug de déterminisme relève de `PROTOCOLE-ERREURS.md`.*
+- **`agents/PILOTAGE.md`** : Gère les **règles globales** (conventions, processus) qui impactent **toutes les sessions** (ex. : nouvelle convention dans `jeu/Docs/Conventions du projet (pour agents).md`).
+- **`jeu/Agents/PROTOCOLE-ERREURS.md`** : Gère les **solutions locales** (problèmes ponctuels, mémoire vive) ou les **règles liées aux erreurs** pour les agents de développement.
+  *Une règle qui modifie le comportement des agents pour toutes les tâches (ex. : "Toujours spécifier les invariants avant de coder") relève de `agents/PILOTAGE.md`. Une solution à un bug de déterminisme relève de `jeu/Agents/PROTOCOLE-ERREURS.md`.*
 
 ## 2. Processus par changement d'instruction
 
 1. **Motif explicite** : chaque changement d'instruction part d'un problème observé (erreur répétée, friction, ambiguïté) ou d'une demande de l'utilisateur, jamais d'une amélioration spéculative.
-2. **Cohérence avant écriture** : vérifier que la nouvelle règle ne contredit **ni le cadrage (`Docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)**, ni la hiérarchie de `AGENTS.md` section 3, ni les instructions système critiques de l'agent, ni une convention existante. En cas de conflit avec le cadrage, **la règle est rejetée ou reformulée pour être compatible**. Une dérogation explicite doit être validée par l’humain et documentée dans le cadrage. En cas de conflit entre autres règles : le résoudre d'abord, ou expliciter la préséance dans le texte.
+2. **Cohérence avant écriture** : vérifier que la nouvelle règle ne contredit **ni le cadrage (`docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)**, ni la hiérarchie de `AGENTS.md` section 3.4, ni les instructions système critiques de l'agent, ni une convention existante. En cas de conflit avec le cadrage, **la règle est rejetée ou reformulée pour être compatible**. Une dérogation explicite doit être validée par l’humain et documentée dans le cadrage. En cas de conflit entre autres règles : le résoudre d'abord, ou expliciter la préséance dans le texte.
 3. **Forme canonique d'une règle** : impérative, testable (on peut dire quand elle est violée), bornée (elle dit quand elle ne s'applique pas), sans doublon d'une règle existante.
-4. **Versionnement additif** : les conventions se numérotent à la suite (le prochain numéro libre de `Conventions du projet (pour agents).md`), avec intitulé de version et date en sous-titre de groupe. Une règle existante se corrige en la remplaçant, pas en la contredisant ailleurs.
+4. **Versionnement additif** : les conventions se numérotent à la suite (le prochain numéro libre de `jeu/Docs/Conventions du projet (pour agents).md`), avec intitulé de version et date en sous-titre de groupe. Une règle existante se corrige en la remplaçant, pas en la contredisant ailleurs.
 5. **Retour d'expérience** : toute friction constatée lors de l'application des instructions (règle ignorée, interprétations divergentes, coût excessif) est un motif de changement recevable ; la révision passe par ce processus.
+
+### Archivage des documents remplacés
+
+- Avant de modifier une spécification ou un cadrage, inventorier les documents actifs sur le même sujet et désigner explicitement la version de référence selon `AGENTS.md`, section 3.4.
+- Quand une nouvelle version remplace une ancienne, déplacer l'ancienne sous `docs/archives/`, dans un sous-dossier par type (`cadrages`, `spec`, `validation`), sans la supprimer ni altérer son contenu.
+- Ne pas archiver un document qui contient une décision ou un état encore utile et absent des références actives : intégrer d'abord cette information dans la source active ou conserver le document comme référence historique clairement signalée.
+- Après déplacement, corriger les liens des documents actifs vers la version retenue ; les archives ne sont ni chargées ni citées comme source de vérité, sauf pour une question historique.
+- Vérifier que les versions actives et leurs renvois restent accessibles et qu'aucun doublon obsolète ne demeure dans les dossiers actifs.
+- **Motif** : demande explicite d'harmoniser le cadrage et les spécifications et d'archiver les versions obsolètes.
+- **Test économique** : gain estimé 200 tokens par session de remise en cohérence documentaire (recherches et relectures évitées), coût estimé 100 tokens par session ; **G > C : oui**.
 
 ---
 **Template de proposition de modification** (à remplir par l'agent) :
@@ -28,7 +42,7 @@ Ce fichier s'applique en mode PILOTAGE (voir `AGENTS.md`, section 2). Le projet 
 - **Règle proposée** : [Texte exact de la nouvelle règle, format impératif]
 - **Test économique** : gain estimé = [X tokens/session], coût = [Y tokens] → **G > C ?** (oui/non)
 - **Vérification de cohérence** :
-  - [ ] Compatible avec le cadrage (`Docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)
+  - [ ] Compatible avec le cadrage (`docs/cadrage vestiges horizons - v7.8.md`, révision v7.8.1)
   - [ ] Compatible avec les conventions existantes
   - [ ] Pas de doublon avec une règle existante
 - **Impact** : [Fichiers/modules concernés]
@@ -44,7 +58,7 @@ Une instruction est un coût payé à **chaque session** ; son gain doit être s
 - **Ajouter ou garder une règle uniquement si : gain attendu par session > coût par session.** Une règle existante peut être rétrogradée vers une spec locale ou supprimée si la balance devient négative.
 - Journaliser le test à chaque ajout ou retrait, sur une ligne : `règle — gain estimé X tokens/session vs coût Y tokens`.
 - Une règle locale à un palier, une couche ou une tâche se met dans la spec de ce palier, **pas** dans les instructions globales.
-- Une connaissance utile au mode JEU suit la règle de la mémoire vive (`Agents/PROTOCOLE-ERREURS.md`, section 5) : `Agents/memoire-vive.md` si gain > coût, sinon rien.
+- Une connaissance utile au mode JEU suit la règle de la mémoire vive (`jeu/Agents/PROTOCOLE-ERREURS.md`, section 5) : `jeu/Agents/memoire-vive.md` si gain > coût, sinon rien.
 
 ## 4. Grille de validation avant de livrer une instruction
 
@@ -57,13 +71,13 @@ Une instruction est un coût payé à **chaque session** ; son gain doit être s
 
 ## 5. Fin de session en mode PILOTAGE
 
-- Mettre à jour `Agents/etat-mode.md` si le mode a changé.
+- Mettre à jour `agents/etat-mode.md` si le mode a changé.
 - Ajouter une ligne à l'Historique ci-dessous si un fichier d'instruction a été créé ou restructuré.
 - **Commiter et pousser** toute modification de fichier d'instruction selon les conventions 28-33.
 
 ## 6. Audit rétroactif des règles existantes
 
-À chaque modification du fichier des conventions (`Docs/Conventions du projet (pour agents).md`), **évaluer les règles existantes** avec le test économique (section 3). Si une règle a un coût > gain :
+À chaque modification du fichier des conventions (`jeu/Docs/Conventions du projet (pour agents).md`), **évaluer les règles existantes** avec le test économique (section 3). Si une règle a un coût > gain :
 - **Rétrograder** vers la spec du palier concerné (si locale).
 - **Condenser** (si redondante ou trop verbeuse).
 - **Supprimer** (si obsolète ou inapplicable).
@@ -98,3 +112,6 @@ Si une décision de l'utilisateur est nécessaire, **préciser systématiquement
 - [2024-11-14] Ajout à la section 8 : **spécification obligatoire du contexte de conversation** (nouvelle conv ou actuelle). Motif : ambiguïté sur la continuité des sessions. Test économique : gain 60 tokens/session vs coût 20 tokens.
 - [2024-11-14] Ajout à la section 8 : **continuation automatique** sans intervention utilisateur. Motif : optimisation du flux de travail. Test économique : gain 70 tokens/session vs coût 20 tokens.
 - [2024-11-14] Ajout à la section 8 : **évaluation systématique du besoin de nouvelle conversation**. Motif : clarification du processus de continuation. Test économique : gain 10 tokens/session vs coût 5 tokens.
+- [2026-11-16] Ajout du protocole d'archivage des documents remplacés à la section 2. Motif : demande explicite d'harmonisation documentaire. Test économique : gain estimé 200 tokens/session de remise en cohérence vs coût 100 tokens/session.
+- [2026-11-16] Séparation du workspace de pilotage Architecte à la racine (`AGENTS.md`, `agents/`, `docs/`) et du workspace des agents de dev (`jeu/`). Motif : isolation des documents de pilotage hors de portée des sous-agents de codage. Test économique : gain estimé 300 tokens/session (isolation de contexte des sous-agents) vs coût 50 tokens/session.
+- [2026-11-16] Intégration de l'outil multi-agents Duo (`multiagents/`) et du protocole Pilote/Salon dans `AGENTS.md`, `agents/PILOTAGE.md`, `jeu/AGENTS.md` et `.cursor/skills/duo-salon/SKILL.md`. Motif : ajout de l'outil de pilotage multi-agents au workspace. Test économique : gain estimé 250 tokens/session (coordination directe par renvoi sans duplication) vs coût 80 tokens/session.

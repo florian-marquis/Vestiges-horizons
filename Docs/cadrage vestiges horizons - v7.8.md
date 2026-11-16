@@ -978,4 +978,4 @@ Les fondations du design sont posées, le combat est cadré (chapitre 11), le pe
 15. Taille des zones locales, résolutions L0 à L3, liste des lieux préfabriqués à la main (à valider en prototype).
 16. FTL : jamais, même après P3 ? À confirmer. Et la vraie question de conception : que sont les paliers au-delà de P3 (secteur, galaxie) ? Jamais dessinés.
 
-**Prochaine étape** : poursuivre le correctif T7-T8 puis les tranches 9-11 ; la spec P1b (scène locale) et les amendements v7.8.1 sont en place. Hors jeu : corriger les pointeurs Agents vers v7.7 (mode PILOTAGE) ; trancher la licence des assets et la bibliothèque de rendu.
+**Prochaine étape** : pour le correctif T7-T8, suivre la spec v1.2 et produire la mesure headless de 10 ans sur le quartier P1 avec la qualité réelle des services, avant la revue humaine de la tranche B. Le contrat complet T7-T8 n'est pas clos par la validation technique de la tranche A. La spec P1b (scène locale) et les amendements v7.8.1 sont en place ; les tranches 9-11 restent à livrer selon l'ordre spécifié. Hors développement du jeu : trancher la licence des assets et la bibliothèque de rendu.

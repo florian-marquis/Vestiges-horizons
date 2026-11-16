@@ -2,7 +2,7 @@
 
 **Source de vérité** : Ce registre fusionne toutes les valeurs marquées "à calibrer" dans `Docs/spec P1 - quartier vivant.md` et les documents annexes.
 **Règle applicable** : Convention 9 — "Spécification d'abord : chaque tâche commence par un texte court (entités, événements, invariants, critères de réussite)".
-**Priorité** : Ce registre doit être **complété et validé avant le lancement de la Tranche 1** (noyau temporel).
+**Priorité** : Ce registre accompagne le calibrage et la fermeture du palier P1 ; il ne bloque pas les tranches déjà spécifiées ou implémentées.
 **Statut** : Vivant — à mettre à jour à chaque session de spécification.
 
 ---

@@ -156,7 +156,7 @@ type: "text/markdown"
 - Spécifié ⬛ : le noyau complet, tout le P1 (24 mécanismes), P1b scène locale (v7.8.1), une partie du P1.5.
 - Cadré 🟦 : routes 1 à 12, paliers P2 et P3 en directions.
 - Réfléchi 🟨 : révoltes/factions/révolutions, économie spatiale, bassin.
-- Ouvert 🟥 : ~20 questions listées ci-dessus, chacune datée d'un palier ; biblio de rendu et licence assets ; pointeurs Agents vers v7.7 (mode PILOTAGE).
+- Ouvert 🟥 : ~20 questions listées ci-dessus, chacune datée d'un palier ; bibliothèque de rendu et licence assets. Les références actives pointent vers le cadrage v7.8/v7.8.1 ; les versions remplacées sont conservées sous `Docs/archives/`.
 - Calibré ✅ : rien — tout le calibrage attend les tranches 10 et 11a.
 
 *Prochaines lignes à faire passer en ⬛ : P1.5 (créneaux couplés, estaminet, information perçue), puis le bassin P2 quand la feuille de route des révoltes sera tranchée.*

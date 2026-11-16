@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "duo-bus": {
+      "type": "stdio",
+      "command": "C:/Users/Florian/Nextcloud/perso/ia/Vestiges horizons/multiagents/.venv/Scripts/python.exe",
+      "args": ["-m", "duo.mcp_bus"],
+      "env": {
+        "PYTHONPATH": "C:/Users/Florian/Nextcloud/perso/ia/Vestiges horizons/multiagents/src",
+        "DUO_BUS_URL": "http://127.0.0.1:8765"
+      }
+    }
+  }
+}
