@@ -14,9 +14,6 @@ use crate::entities::EntityId;
 use crate::{Event, EventData, Timestamp, EVENT_TYPE_INPUT_CHANGED};
 pub use crate::griefs::{GriefEntree, GriefsError, GriefsState};
 
-const FOOD_BUDGET_RENT: u64 = 110;
-const FOOD_BUDGET_WATER: u64 = 20;
-
 /// Composantes du panier
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Panier {
@@ -130,9 +127,15 @@ impl SalaireReelEtGriefs {
         (numerator / 1_000) as u64
     }
 
+    /// Budget nourriture journalier : reste à vivre après logement, eau et impôt,
+    /// lus depuis le panier propre à la cohorte (aucune constante locale).
     pub fn budget_nourriture(&self, _jour: i64) -> u64 {
-        self.revenu_journalier()
-            .saturating_sub(FOOD_BUDGET_RENT + FOOD_BUDGET_WATER + self.impot_journalier())
+        let charges = self
+            .panier
+            .logement
+            .saturating_add(self.panier.eau)
+            .saturating_add(self.impot_journalier());
+        self.revenu_journalier().saturating_sub(charges)
     }
     
     /// Calcule p (pression des prix) pour cette entité
@@ -443,7 +446,47 @@ mod tests {
         assert_eq!(manager.entites.get(&first).unwrap().cout_panier, 150);
         assert_eq!(manager.entites.get(&second).unwrap().cout_panier, 0);
     }
-    
+
+    /// Le budget nourriture suit les charges logées dans le panier de la cohorte
+    /// (Logement et Eau) : toute variation du panier se répercute sur le reste à vivre.
+    #[test]
+    fn food_budget_follows_basket_rent_and_water_updates() {
+        let mut manager = SalaireReelEtGriefsManager::new();
+        let entity = EntityId::new(crate::entities::EntityType::Cohort, 1);
+        manager.ajouter_entite(entity);
+        manager.mettre_a_jour_salaire_horaire(entity, 60);
+        manager.mettre_a_jour_heures(entity, 8);
+        // Revenu 480, impôt 48 : budget attendu 480 - 110 - 20 - 48 = 302
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Logement, 110)
+            .unwrap();
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Eau, 20)
+            .unwrap();
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Fiscalite, 48)
+            .unwrap();
+        assert_eq!(manager.entites.get(&entity).unwrap().budget_nourriture(0), 302);
+
+        // Logement +10 : budget 480 - 120 - 20 - 48 = 292
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Logement, 120)
+            .unwrap();
+        assert_eq!(manager.entites.get(&entity).unwrap().budget_nourriture(0), 292);
+
+        // Eau +5 : budget 480 - 120 - 25 - 48 = 287
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Eau, 25)
+            .unwrap();
+        assert_eq!(manager.entites.get(&entity).unwrap().budget_nourriture(0), 287);
+
+        // Charges supérieures au revenu : budget borné à zéro, jamais négatif
+        manager
+            .mettre_a_jour_panier_entite(entity, PanierComposante::Eau, 500)
+            .unwrap();
+        assert_eq!(manager.entites.get(&entity).unwrap().budget_nourriture(0), 0);
+    }
+
     /// §19.2 T7.1 : Concordance - I8 vert à tolérance zéro
     #[test]
     fn test_t7_1_concordance_i8() {
