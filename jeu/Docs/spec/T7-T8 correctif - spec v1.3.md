@@ -198,6 +198,26 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 - **Redéfinition de `p` (Lot G.2, 17/11/2026) :** `effort = floor(cout_panier × 1000 ÷ revenu)` (`revenu 0 → p = 1000`), `p = clamp(floor((effort − 600) × 1000 ÷ 400), 0, 1000)` avec **`e0 = 600`** ; valeurs de contrôle au jour 0 `[802, 545, 187, 0, 0]` ; motif : *une famille qui dépense presque tout son revenu pour survivre est de plus en plus tendue, même sans choc.*
 - **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + self.panier.logement + self.panier.eau + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - self.panier.logement - self.panier.eau - impot(c))`, tous deux branchés sur la même source de revenu et le même panier dans `SalaireReelEtGriefs`.
 
+## Annexe — Scénario S0b et résultats du lot G (17/11/2026, graine 42, 3 650 jours)
+
+**Scénario S0b (Lot H2, commit `2bbc49f`)** : S0 sans modification (mêmes données figées, aucun choc, stock initial 2 000, imports 500/j), mais `q = 500` constant pour toutes les cohortes. Mise en œuvre : soins avec demande `2 × population` et capacité `population` (taux de service 500), état du logement fixé à 500 sans usure ; `calculate_q` pondère soins et logement à 500/500, donc `q = 500`. Règle d'arrêt : une cohorte à `G = 100` en moins de 3 650 j sans choc → STOP sans retouche (non déclenchée). S0 et S1–S4 inchangés (sortie identique ligne à ligne).
+
+Repère (pas un critère) : pente `20·p0` µpt/j = `[16 040, 10 900, 3 740, 0, 0]` ; 1 µpt = 4 qµpt.
+
+| idx | p0 | u max | G365 qµpt | G1825 qµpt | G3650 qµpt | G=0 | 0<G<100 | G=100 | q min/moy/max | j rationnés |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 802 | 0 | 23 418 400 | 117 092 000 | 234 184 000 | 0 | 3650 | 0 | 500/500,0/500 | 0 |
+| 1 | 545 | 0 | 15 914 000 | 79 570 000 | 159 140 000 | 0 | 3650 | 0 | 500/500,0/500 | 0 |
+| 2 | 187 | 0 | 5 460 400 | 27 302 000 | 54 604 000 | 0 | 3650 | 0 | 500/500,0/500 | 0 |
+| 3 | 0 | 0 | 0 | 0 | 0 | 3650 | 0 | 0 | 500/500,0/500 | 0 |
+| 4 | 0 | 0 | 0 | 0 | 0 | 3650 | 0 | 0 | 500/500,0/500 | 0 |
+
+**Résultats du lot G (S0, après G1 `bf6f41b` + G2 `6501e43`)** : en S0 (`q` de 800 à 1 000), `G = 0` pendant les 3 650 jours pour les cinq cohortes, bien que `p0 = [802, 545, 187, 0, 0]` : le soulagement par `q` compense la pression de `p`. En S0b (`q = 500`), les cohortes 0 à 2 ont `G > 0` en permanence (maximum 58,5 points pour la cohorte 0 après 10 ans), les cohortes 3 et 4 restent à `G = 0`.
+
+**Rectificatif de relevé (Lot H1)** : le nombre de jours de rupture du marché en S2 vaut **86** avant G1, après G1 et après G2 (sortie du binaire). L'indication « 0 jour après G1 » du compte rendu de G1 était une erreur de relevé ; le marché n'a pas changé de comportement entre G1 et G2. Seul S1 change avec G1 (34 → 0 jour de rupture).
+
+Sorties complètes de référence : tableaux S0–S4 après G2 conservés dans le rapport du Lot H.
+
 ## Points ouverts, non traités (à reporter dans le rapport final)
 
 - Quartier de `500` habitants dans ce scénario contre `150` individus dans le cadrage.
