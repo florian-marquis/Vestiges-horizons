@@ -9,7 +9,7 @@ use vestiges_horizons::household::{FoodQuality, Household, HousingQuality};
 use vestiges_horizons::inputs::{
     calculate_q, calculate_u_after_meal, InputTracker, InputValues, ServiceComponent,
 };
-use vestiges_horizons::market::{GoodType, Market, MarketManager};
+use vestiges_horizons::market::{GoodType, MarketManager};
 use vestiges_horizons::salary::{PanierComposante, SalaireReelEtGriefsManager};
 use vestiges_horizons::{EventQueue, Id, Phase, Priority, Timestamp};
 
@@ -21,7 +21,8 @@ const DAILY_IMPORT: u32 = 500;
 const MAX_FOOD_STOCK: u32 = 2_500;
 const BASE_FOOD_PRICE: u64 = 100;
 const MAX_FOOD_PRICE: u64 = 600;
-// Repricing runs daily: +10 below the five-day stock cap, -10 at full stock; 50 rises reach 600.
+// Repricing runs daily: multiplicative rise of +25%/day below the five-day stock cap
+// (floor(P * 125 / 100), capped at 600), unchanged linear fall of -10/day at full stock.
 const FOOD_PRICE_STEP: u64 = 10;
 const SHOCK_START_DAY: i64 = 200;
 const SHOCK_END_DAY: i64 = 290;
@@ -263,6 +264,19 @@ fn schedule_initial_imports(market: &mut MarketManager) -> Result<(), io::Error>
     Ok(())
 }
 
+/// Reprice quotidien du scénario (Lot G1) : sous 5 jours de couverture, la hausse
+/// est multiplicative (`+25 %/jour`, troncature entière, plafond `MAX_FOOD_PRICE`) ;
+/// à couverture pleine, la descente reste linéaire (`-10/jour`, plancher `BASE_FOOD_PRICE`).
+fn reprice_quotidien(stock: u32, displayed_price: u64) -> u64 {
+    if stock < MAX_FOOD_STOCK {
+        (displayed_price.saturating_mul(125) / 100).min(MAX_FOOD_PRICE)
+    } else {
+        displayed_price
+            .saturating_sub(FOOD_PRICE_STEP)
+            .max(BASE_FOOD_PRICE)
+    }
+}
+
 fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
     let mut entities = EntityManager::new(SEED);
     let mut salary = SalaireReelEtGriefsManager::new();
@@ -370,7 +384,8 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
             .get_market_mut(FOOD_GOOD_ID)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "marché alimentaire absent"))?;
         market_state.stock = market_state.stock.min(MAX_FOOD_STOCK);
-        market_state.auto_reprice();
+        market_state.displayed_price =
+            reprice_quotidien(market_state.stock, market_state.displayed_price);
         let displayed_price = market_state.displayed_price;
         price_history.push(displayed_price);
         import_history.push(arrived_quantity);
@@ -693,37 +708,26 @@ mod tests {
 
     #[test]
     fn market_reprice_tracks_full_stock_and_reverses_to_base_price() {
-        let mut market = Market::new(
-            EntityId::new(EntityType::Market, FOOD_GOOD_ID),
-            GoodType::Food,
-            FOOD_GOOD_ID,
-            BASE_FOOD_PRICE,
-            MAX_FOOD_STOCK,
-            None,
-            (MAX_FOOD_STOCK, MAX_FOOD_STOCK - 1),
-            FOOD_PRICE_STEP,
-            (BASE_FOOD_PRICE, MAX_FOOD_PRICE),
-            0,
-        );
+        // Couverture sous 5 jours : montée multiplicative +25 %/jour (troncature entière, plafond 600).
+        let mut price = BASE_FOOD_PRICE;
+        for expected in [125, 156, 195, 243, 303, 378, 472, 590] {
+            price = reprice_quotidien(MAX_FOOD_STOCK - 1, price);
+            assert_eq!(price, expected);
+        }
+        price = reprice_quotidien(MAX_FOOD_STOCK - 1, price);
+        assert_eq!(price, MAX_FOOD_PRICE);
+        price = reprice_quotidien(MAX_FOOD_STOCK - 1, price);
+        assert_eq!(price, MAX_FOOD_PRICE, "le plafond 600 est stable");
 
-        market.auto_reprice();
-        assert_eq!(market.displayed_price, BASE_FOOD_PRICE);
-        market.stock = MAX_FOOD_STOCK - 1;
-        market.auto_reprice();
-        assert_eq!(market.displayed_price, BASE_FOOD_PRICE + FOOD_PRICE_STEP);
-        while market.displayed_price < MAX_FOOD_PRICE {
-            market.stock = 0;
-            market.auto_reprice();
+        // Couverture pleine : descente inchangée -10/jour, plancher 100.
+        while price > BASE_FOOD_PRICE {
+            price = reprice_quotidien(MAX_FOOD_STOCK, price);
         }
-        assert_eq!(market.displayed_price, MAX_FOOD_PRICE);
-        while market.displayed_price > BASE_FOOD_PRICE {
-            market.stock = MAX_FOOD_STOCK;
-            market.auto_reprice();
-        }
-        assert_eq!(market.displayed_price, BASE_FOOD_PRICE);
-        market.stock = MAX_FOOD_STOCK - 1;
-        market.auto_reprice();
-        assert_eq!(market.displayed_price, BASE_FOOD_PRICE + FOOD_PRICE_STEP);
+        assert_eq!(price, BASE_FOOD_PRICE);
+        price = reprice_quotidien(MAX_FOOD_STOCK, price);
+        assert_eq!(price, BASE_FOOD_PRICE, "le plancher 100 est stable");
+        price = reprice_quotidien(MAX_FOOD_STOCK - 1, price);
+        assert_eq!(price, 125);
     }
 
     #[test]
