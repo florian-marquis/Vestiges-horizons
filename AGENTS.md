@@ -46,8 +46,8 @@ Ce fichier est le point d'entrée unique de l'**Agent Architecte et Chef d'Orche
 - **Démarrage et accès** : lancer `multiagents/start.bat` (ou `.venv\Scripts\python.exe -m duo` avec `PYTHONPATH=src`), interface sur `http://127.0.0.1:8765` (UI salon sur `/`, orchestrateur CLI sur `/orchestre`, authentification OAuth CLI et quotas best-effort sur `/comptes`). Les 4 providers supportés pour les comptes/orchestrateur sont `cursor`, `copilot`, `vibe`, `antigravity` (en mode orchestrateur réel, authentifier via `/comptes` ou CLI ; le mode **Simulé** fonctionne sans authentification).
 - **Outils et API** : serveur MCP `duo-bus` (`lire_salon`, `dire`, `attendre`) déclaré dans `multiagents/.cursor/mcp.json`, CLI d'attente opaque `python -m duo.wait_room --base http://127.0.0.1:8765 <room_id> <token> <SEQ>` (avec `PYTHONPATH=multiagents/src`), ou API HTTP locale (`/api/rooms`, header `X-Duo-Request: 1`, authentification par `token` de rôle).
 - **Protocole du Pilote** (détail dans `multiagents/docs/PILOTE.md`) :
-  1. Parler en premier, découper la tâche validée en micro-tâches et cibler les agents via `@agent2` / `@agent3` (`@agent1` uniquement en secours/escalade ; un message adressé est reçu par le destinataire et le Pilote ; sans `@` = broadcast).
-  2. Maintenir `etat.md` (`# Objectif`, `# Décisions`, `# TODO`, `# Rédacteur actuel`, `# Destinataire suivant`) et imposer **un seul Rédacteur actuel à la fois** sur le code de `jeu/` (l'Architecte/Pilote conserve sa règle stricte de lecture seule sur `jeu/src/`).
+  1. Parler en premier, découper la tâche validée en **micro-tâches courtes** (un seul lot atomique à la fois ; sur un lot complexe, séparer l'analyse de l'écriture) et cibler les agents via `@agent2` / `@agent3` (`@agent1` uniquement en secours/escalade ; un message adressé est reçu par le destinataire et le Pilote ; sans `@` = broadcast).
+  2. Maintenir `etat.md` (`# Objectif`, `# Décisions`, `# TODO`, `# Rédacteur actuel`, `# Destinataire suivant`) et imposer **un seul Rédacteur actuel à la fois** sur le code de `jeu/` (l'Architecte/Pilote conserve sa règle stricte de lecture seule sur `jeu/src/`). **Ne jamais retirer le rôle de `Rédacteur actuel` à un agent encore en phase d'analyse du code** sans lui laisser le temps de répondre (effectuer au moins un ping ciblé suivi d'un cycle d'attente complet ou obtenir l'accord explicite de l'utilisateur).
   3. Boucle `attendre` (ou `python -m duo.wait_room`) → analyse/contrôle → `dire` → `attendre`. **L'attente est opaque** : elle enchaîne les polls HTTP de 90 s en interne et ne revient que sur un message visible ou la clôture du salon. Si l'IDE coupe l'outil d'attente, le rappeler immédiatement avec **le même `SEQ`** sans réfléchir.
   4. Envoyer `STOP` pour demander le bilan final avant de clôturer le salon.
 
@@ -62,7 +62,7 @@ Ce fichier est le point d'entrée unique de l'**Agent Architecte et Chef d'Orche
 | `AGENTS.md` | Ce routeur (workspace parent de pilotage) |
 | `agents/PILOTAGE.md` | Processus d'évolution des instructions et règle économique |
 | `agents/etat-mode.md` | État du mode courant |
-| `docs/cadrage vestiges horizons - v7.8.md` | Source de vérité macro du design (GDD v7.8, révision v7.8.1) |
+| `docs/cadrage vestiges horizons - v7.8.md` | Source de vérité macro du design (GDD v7.8, révision v7.8.2) |
 | `docs/suivi du projet - todo.md` | Backlog des paliers, état fait/en cours/à faire, décisions récentes |
 | `docs/registre de completude.md` | Carte des mécanismes et statuts (⬛ / 🟦 / 🟨 / 🟥 / ✅) |
 | `docs/registre-consolide-a-calibrer.md` | Paramètres « à calibrer » consolidés |

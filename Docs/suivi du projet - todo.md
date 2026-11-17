@@ -6,14 +6,14 @@ type: "text/markdown"
 
 # Vestige : Horizon · Suivi du projet (todo)
 
-*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 16 novembre 2026.*
+*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 17 novembre 2026.*
 
 ---
 
 ## 1. Ce qui est fait
 
 ### Cadrage et conventions
-- Cadrage du 4X **v7.8 / v7.8.1** (historique v4 → v7.8.1) : immersion P1b (présence lieu-créneau, scène causale, régimes de vitesse), créneau = index de séquence. Fichier local à jour.
+- Cadrage du 4X **v7.8 / v7.8.2** (historique v4 → v7.8.2) : immersion P1b (présence lieu-créneau, scène causale, régimes de vitesse), équation de griefs réaliste `0,18u + 0,02p - 0,06(q - 0,5)` (neutre à `q = 0,5`, arbitrage `p` via salaire réel confirmé). Fichier local à jour.
 - Conventions v2.3 (règles 1-34). Document local à jour.
 
 ### Spécification P1 — le quartier vivant (complète, révisée v7.8.1)
@@ -31,7 +31,7 @@ type: "text/markdown"
 
 ## 2. En cours (réflexion ouverte)
 
-- **Correctif T7-T8 v1.2** : tranche A et tranche A2 (Phase 1 : sources réelles `u`/`p`/`q`, `InputTracker`, scénario `quartier_10ans` sur 10 ans, 8 tests headless, commit `5758e5a`) implémentées et vérifiées techniquement. Le tableau d'observation de 10 ans est prêt pour la revue humaine (spec v1.2 §5), avant toute ouverture de la tranche B. Le risque, les grèves et I8 restent hors périmètre de cette tranche.
+- **Correctif T7-T8 v1.3 (`feat/t7-t8-griefs-realistes`)** : Lots A, B, C et D implémentés et vérifiés techniquement (`d4313dd`, `85e4149`, `5ee863b`) selon `jeu/Docs/spec/T7-T8 correctif - spec v1.3.md` (partage `R/N` et `u` post-repas, budget reste-à-vivre, allocation Mode A prorata + plus grand reste + `EntityId`, courbe de prix sous 5 j plafond `300`, équation `v7.8.2`, scénarios `S0–S4` graine 42 sur 3 650 j). En attente de validation humaine (Convention 34) sur les résultats `S0–S4` avant toute ouverture de la tranche B (grèves, risque et I8 intacts).
 - **Révoltes/révolutions** : feuille de route de 6 questions à trancher avant cadrage — (1) grain de la légitimité [racine], (2) sortie de la révolte de quartier (émeute), (3) pouvoir central organisation ou mur, (4) économie politique de la révolte, (5) conséquences de la victoire, (6) calibrage de rareté.
 - **Économie spatiale** : 6 questions ouvertes — (1) première instance de P2 : ville ou station [intuition : ville], (2) qui construit les mégastructures, (3) FTL jamais ? à confirmer, (4) économie des ressources (astéroïdes vs surfaces), (5) statut de la place d'échange [intuition : infrastructure-institution + firmes], (6) calibrage des coûts d'accès.
 
@@ -50,13 +50,13 @@ type: "text/markdown"
 ### Développement en cours / prochaines étapes
 9. **Tranche 1 — noyau temporel** : ordre de mission prêt (spec section 13 + mission section 29). Rien à spécifier de plus ; **implémentée dans src/lib.rs**.
 10. **Tranches 2 à 6** : **implémentées** (entities.rs, time.rs, firm.rs, market.rs, credit.rs, labor.rs).
-11. **Tranche 7 — Salaires réels et griefs** : tranche A du correctif T7-T8 v1.2 validée techniquement (`src/griefs.rs`, `src/salary.rs`) ; la mesure en quartier et la concordance I8 restent ouvertes.
+11. **Tranche 7 — Salaires réels et griefs** : correctif T7-T8 v1.3 (`src/griefs.rs`, `src/salary.rs`, `src/inputs.rs`, `src/household.rs`, `src/bin/quartier_10ans.rs`) implémenté et vérifié techniquement (`S0–S4`) ; en attente de validation humaine avant la tranche B (la concordance I8 `G + δ` reste ouverte pour la tranche D).
 12. **Tranche 8 — Basculements** : du code et des tests existent (`src/strike.rs`, `tests/test_tranche8.rs`), mais ils ne ferment pas le contrat actuel ; la validation du risque et des grèves reste ouverte après la revue humaine de la tranche B.
 13. Tranches 9-11 (vie sociale, suite headless, P1b scène) : à lancer après clôture correctif T7-T8 ; 11a headless avant 11b rendu.
 14. **Écarts d'implémentation à traiter** (signalés, non corrigés dans cette session) :
     - `TimeBudget` (`src/time.rs`) tient des durées par usage ; la spec §31.2 demande 32 demi-heures positionnées (Usage + lieu).
     - Aucune entité `Lieu` dans `src/` pour l'instant.
-15. **Hors plan / hors mode JEU** : choix de la bibliothèque de rendu (dépendance nouvelle) ; licence des assets (CC0 recommandé). Le cadrage actif est v7.8, révision v7.8.1 ; la version v7.7 est archivée.
+15. **Hors plan / hors mode JEU** : choix de la bibliothèque de rendu (dépendance nouvelle) ; licence des assets (CC0 recommandé). Le cadrage actif est v7.8, révision v7.8.2 ; la version v7.7 est archivée.
 
 ### Points ouverts plus lointains (rappel)
 - Deuil comme arrêt indemnisé ou non (P2, fiscalité) ; registres de langue par cohorte ; taille du corpus de répliques par intention ; moment où l'incitation devient organisation (P2) ; partage d'idées et dérive culturelle (route 6) ; calibrage de la reconnaissance (ch. 13) ; tout le palier P2 et au-delà.
@@ -79,12 +79,13 @@ type: "text/markdown"
 | v7.7 | Influence mutuelle des cultures : uniquement par contact individuel pondéré au statut perçu (soft power émergent) ; dissonance morale séduit ou raidit ; pureté culturelle = position doctrinale (institutions κ, factions) ; convergence en gradient de vitesses |
 | v7.8 | Revue de cohérence : griefs en années, fonction « explique », paliers reconstitués, localisation, ch. 18 gel de générateur |
 | v7.8.1 | Immersion P1b : créneau = instant logique ; présence lieu-créneau ; scène causale ; trois régimes de vitesse ; vue détaillée du service reste P2 ; décisions 67-70 ; spec P1b |
+| v7.8.2 | Équation de griefs réaliste (`0,18u + 0,02p - 0,06(q - 0,5)` ; neutre à `q = 0,5`, arbitrage `p` via salaire réel) |
 
 ## 5. Inventaire des documents (Drive, dossier « Vestige horizon »)
 
 | Document | État |
 | --- | --- |
-| Cadrage v7.8 / v7.8.1 | À jour (local) |
+| Cadrage v7.8 / v7.8.2 | À jour (local) |
 | Conventions v2.3 | À jour |
 | Spec P1 (quartier vivant) | À jour (révisée immersion) |
 | Spec P1b (scène locale et immersion) | À jour (nouveau) |

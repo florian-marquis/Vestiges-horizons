@@ -23,6 +23,7 @@ Nov 14, 2026 · @Florian
 > **v7.3 à v7.7** : génération de plans structure/peau/marqueurs (v7.3), grammaire architecturale et outil manifeste → prompts (v7.4), culture comme paquet de données porté par les cohortes (v7.5), style graphique projeté du vecteur culturel (v7.6), influence mutuelle des cultures par contact (v7.7).
 > **v7.8** : revue de cohérence complète. Calibrage de l'équation de griefs aligné sur son intention (années, pas mois) ; fonction « explique » et observabilité (chapitre 9) ; paliers P1 réduit / P1.5 / P2 / P3 reconstitués au chapitre 7 et ordre de développement du chapitre 9 aligné dessus ; chaîne de production du chapitre 10 réattribuée (chaîne de référence du moteur de recettes, chaîne vivrière en P1) ; architecture de localisation et neutralité linguistique de l'état (chapitre 12) ; nouveau chapitre 18 de cohérence multi-échelle de la génération (gel de version de générateur par sauvegarde) ; probabilité cumulée de mort accidentelle recalculée (chapitre 13) ; « Où nous en sommes » réordonné chronologiquement et questions ouvertes consolidées avec le registre de complétude.
 > **v7.8.1** : immersion du premier jouable. Créneau = index de séquence de l'horodatage logique (chapitres 7, 14) ; présence lieu-créneau et scène causale en P1b (chapitre 7) ; trois régimes de vitesse pour le quartier (chapitre 13) ; vue détaillée du service maintenue en P2, présence au grain du lieu dès P1b (chapitre 17). Spec : `Docs/spec/P1b - scene locale et immersion - spec.md`.
+> **v7.8.2** : équation de griefs réaliste (q neutre à 0,5 ; faim 0,18).
 
 ## 1. Le late game : interruptions et valeur d'intervention
 
@@ -67,20 +68,23 @@ Une crise n'est pas un événement scripté mais un état du monde auquel plusie
 
 **Sémantique (v6).** Les coefficients s'expriment en points de griefs par jour, mais le calibrage se fait sur des horizons pluriannuels : une pénurie durable doit saturer G en années, pas en mois, pour laisser aux crises lentes leur danger. L'intégration est événementielle : G est mis à jour quand une entrée change (u, p, q sont constantes par morceaux), avec bornes 0 à 100. La même équation s'applique au niveau individuel avec des coefficients par clé stable, et la somme des griefs individuels d'une cohorte doit rester concordante avec le grief agrégé (à tester).
 
-**Calibrage de référence (v7.8).** Les anciens coefficients de départ (0,8 ; 0,2 ; 0,25) saturaient G en environ 125 jours pour une pénurie totale : quatre mois, ce que la sémantique ci-dessus interdit. Nouveau point de départ, avec la contrainte d'acceptation exprimée sur le comportement et non sur les coefficients :
+**Calibrage de référence (v7.8.2).** Les coefficients révisés en v7.8.2 recentrent l'équation autour d'un seuil neutre de qualité de service à `q = 0,5` (en dessous, les services dégradés font monter G ; au-dessus, ils apaisent) et doublent le poids de la faim (`0,18`) afin qu'une pénurie de quelques mois laisse une trace durable :
 
 ```latex
-\frac{dG}{dt} = 0{,}09\,u + 0{,}02\,p - 0{,}03\,q \quad \text{(points de griefs par jour)}
+\frac{dG}{dt} = 0{,}18\,u + 0{,}02\,p - 0{,}06\,(q - 0{,}5) \quad \text{(points de griefs par jour)}
 ```
 
 | Critère d'acceptation (headless) | Cible de départ |
 | --- | --- |
-| u = 1 durable, p = 0, q = 0, G de 0 à 100 | 2 à 4 ans (≈ 1 100 jours à 0,09/jour) |
-| Pénurie partielle u = 0,3 durable | saturation en 8 à 12 ans, pas de saturation si q compense |
-| Apaisement : u = p = 0, q = 1, G de 100 à 0 | 6 à 10 ans (la colère retombe plus lentement qu'elle ne monte) |
+| u = 1 durable, p = 0, q = 0, G de 0 à 100 | 1 à 3 ans (≈ 477 j) |
+| u = 0,3 durable, p = 0, q = 0,5 | 3 à 8 ans (≈ 1 852 j) ; q ne compense complètement la faim que si u ≲ 0,17 |
+| u = p = 0, q = 0 (services nuls), G de 0 à 100 | 6 à 12 ans (≈ 3 334 j) |
+| u = p = 0, q = 0,5 | G constant |
+| Apaisement u = p = 0, q = 1, G de 100 à 0 | 6 à 10 ans |
+| Choc 90 j (u = 1, q = 0,5) | +10 à +20 points ; retombée à q = 1 en 1 à 3 ans |
 | Concordance somme individuelle / agrégé | égalité à la tolérance de la virgule fixe |
 
-Ces valeurs restent des références de test tant que leur interprétation n'est pas validée en headless sur des horizons courts et longs. Précision : la variable p est aussi une composante du salaire réel (chapitre 14) ; l'arbitrage pour éviter le double emploi de p et du salaire réel dans G reste ouvert (question 11 de « Où nous en sommes »).
+Ces valeurs restent des références de test tant que leur interprétation n'est pas validée en headless sur des horizons courts et longs. Précision (v7.8.2) : le double emploi de p et du salaire réel reste tranché — le salaire réel n'entre dans G que via p uniquement.
 
 **Du risque au basculement**
 
