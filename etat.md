@@ -1,36 +1,32 @@
 # Objectif
-T7-T8 · Tranche A2 — Phase 1 : implémenter les sources réelles de `u`, `p`, `q` en millièmes entiers `[0, 1000]` dans le cœur (`jeu/`), supprimer les décalages manuels et les `f64`, livrer le scénario `quartier_10ans` (tableau spec v1.2 §5 sur 10 ans, graine 42, choc 2) et les 8 tests headless de l'ordre de mission `jeu/Docs/spec/T7-T8 tranche A2 - ordre de mission.md`.
+Branche `feat/t7-t8-griefs-realistes` — Correctif T7-T8 Tranche A2 réaliste (Lots A, B, C, D) : équation `v7.8.2`, budget reste-à-vivre (Option 1), achat partiel/rationnement prorata (Mode A), consommation partielle `R/N` et scénarios de référence **S0** puis **S1–S4**. Spec complète verrouillée : `jeu/Docs/spec/T7-T8 correctif - spec v1.3.md`.
 
 # Décisions
-- Audit Phase 0 de Mistral Vibe (`@agent3`) validé avec 4 cadrages impératifs pour la Phase 1 :
-  1. **`u` (besoins alimentaires non servis)** : `u = 0` tant que le stock alimentaire disponible est `> 0` ou si `demande == 0` ; sinon `u = ((non_servis * 1000) / demande).min(1000) as u16` (troncature entière, convention 26).
-  2. **`p` (pression des prix — correction sur la piste B2 du rapport)** : ne **pas** utiliser `displayed_price / base_price` (qui venait du benchmark synthétique). Appliquer la formule de la Spec P1 §6.2 depuis le panier et le revenu disponible (`src/salary.rs`) : si `cout_panier == 0` ou `revenu_disponible >= cout_panier`, `p = 0` ; sinon `p = (((cout_panier - revenu_disponible) * 1000) / cout_panier).min(1000) as u16` (troncature entière).
-  3. **`q` (qualité des services, D1 = option 2)** : moyenne pondérée entière par table de données `[(Soins, 500), (Logements, 500)]`. Taux de soins `[0, 1000]` issu du dispensaire (`health.rs`), taux des logements `[0, 1000]` issu de l'état d'entretien des actifs logements (`asset.rs` / `maintenance.rs`). Toute composante sans donnée réelle est exclue de la moyenne (jamais comptée comme 0).
-  4. **Architecture et interdits** : fichier unique `jeu/src/inputs.rs`, exposé dans `jeu/src/lib.rs`. Interdiction stricte de modifier `src/strike.rs`, le calcul de risque dans `src/salary.rs`, ou les replais JSON de référence.
-- **Revue Pilote du Lot 1 (`@agent3` Mistral Vibe)** :
-  - `cargo test` vert (117 lib + 28 `test_inputs` + 3 `test_replais` + tranches 2/3/4/5/7/8) et `src/strike.rs`, risque dans `src/salary.rs`, `src/replai/*.json` intacts.
-  - **2 ajustements mineurs requis pendant le Lot 2 (ou pris en charge dans Lot 2)** :
-    1. `DispensaryQueue::calculate_service_rate()` dans `health.rs` calcule `(capacity - queue.len()) / capacity` (il tombe à 0 si `queue.len() >= capacity` alors qu'un dispensaire de capacité 10 sert bien 10 patients/jour sur une file de 10 !). Or la sémantique réelle est : si `patients_en_attente == 0` → `1000` ; sinon s'il y a `N` patients demandeurs, servis = `min(capacity, N)` → taux = `(min(capacity, N) * 1000 / N)`. Corriger en vérifiant s'il faut distinguer `demande_soins` vs `queue.len()` (ou si `capacity` sert jusqu'à `capacity` patients parmi `patients_en_attente + traites`).
-    2. Dans `inputs.rs`, ajouter un test #6 statique réel (par ex. qui lit `src/inputs.rs` et vérifie `!source.contains("f64") && !source.contains("exp(")`) et un émetteur sur franchissement de seuil (`InputTracker` ou fonction qui n'émet `InputChanged` que si `(u, p, q)` a changé au moins d'1 millième, au plus 1 fois par cohorte et par créneau — cf. ordre de mission §3).
-- Plan Lot 2 validé par le Pilote (`seq=4`) : binaire dédié `src/bin/quartier_10ans.rs`, graine 42, 3 650 jours, choc 2 réel, tableau spec v1.2 §5 + tests #3, #7, #8.
-- Répartition des rôles Duo :
-  - `@pilote` (VS Code) : Architecte (lecture seule sur `jeu/src/`, pilotage et revue).
-  - `@agent1` (Cursor) : Secours / escalade uniquement.
-  - `@agent2` (GitHub Copilot Fusion, VS Code) : **`Rédacteur actuel`** pour Lot 2 + 2 corrections mineures du Lot 1.
-  - `@agent3` (Mistral Vibe, VS Code) : En veille (lecture seule / relecture si demandé).
+- **Relais Rédacteur (17/11/2026) :** `@agent3` n'ayant pas répondu, **`@agent2` (GitHub Copilot Fusion)** devient **`Rédacteur actuel`** unique sur `jeu/` pour exécuter dans l'ordre **Lots A, B, C, puis D (S0 d'abord, puis S1–S4)**. `@agent3` passe en lecture seule (ne rien modifier dans `jeu/`).
+- **Verrouillage technique B.3 (prix et seuils de stock) :**
+  - Stock initial `2 000` rations ; pipeline `GoodType::Food` (`délai 3 j`) pré-amorcé à `t = 0` avec `500` rations livrées aux jours `0, 1, 2`.
+  - Chaque matin après arrivages, stock du marché alimentaire plafonné à `5` jours (`2 500` rations).
+  - `Market::auto_reprice()` appelé une seule fois par jour **avant** les achats des cohortes, avec `stock_thresholds = (2_500, 2_499)`, `price_bounds = (100, 300)` (`P_base = 100`, plafond `3 × P_base = 300`) et `price_step = 10`.
+- **Verrouillage des scénarios S0–S4 (Lot D, graine 42, 3 650 j, données figées Annexe spec v1.3) :**
+  - **S0–S3 logements :** `INITIAL_HOUSING_STATES = [600, 700, 800, 900, 1000]`, `wear_rate = 0` (entretenus). En **S0, S1, S2**, dispensaire nominal (`soins = 1000`) → `q = [800, 850, 900, 950, 1000]`.
+  - **S1 & S2 fenêtre choc :** arrivages effectifs réduits exactement du jour `200` au jour `289` inclus (commandes réduites `jours 197..=286` avec délai `3` j) : `250/j` (S1) et `0/j` (S2), retour à `500/j` dès le jour `290`.
+  - **S3 :** sans faim (`500/j`), logements entretenus (`wear_rate = 0`), cohorte `0` avec `care_capacity = 6`, `daily_care_demand = 30` (`soins = 200`, `q = 400 < 500`) ; cohortes `1–4` à `soins = 1000`.
+  - **S4 :** logements non entretenus `[600, 700, 800, 900, 1000]` avec `wear_rate = 1` ; soins déclinant linéairement (`demande = population`, `capacite(day) = (population * (3650 - day)) / 3650`, `soins` de `1000` à `0`) ; salaires gelés `[35, 40, 50, 60, 70]` et arrivages effectifs contractés à partir du jour `1 825` : `500 - (((day - 1825) * 150) / 1825)` vers `350/j` (`P` monte vers `300`).
+- **Règle d'arrêt S0 :** exécuter **S0** en premier après Lots A–C ; si une cohorte atteint `G=100` en moins de `3` ans (`< 1 095` j) sans choc → **STOP** immédiat et rapport à `@pilote` sans lancer S1–S4. Sinon enchaîner **S1–S4**.
+- **Règles dures :** `src/replai/*.json` (T1–T5) en lecture seule ; interdit de toucher `src/strike.rs`, risque dans `src/salary.rs`, `src/labor.rs`, I8 ; aucun `f64`/`exp(` ; `meal.rs:330` inchangé.
+- **Résultats vérifiés (graine 42, 3 650 j) :** S0 passe sans déclencher le garde-fou ; `p0 = 0`, ratios budget/P `[1,22; 1,58; 2,30; 3,02; 3,74]`, `u max = 0`, `G max = 0`, aucune ration rationnée ni rupture, `P max = 100`. S1/S2/S3/S4 exécutés ; Pmax respectifs `300/300/100/300`, jours de rupture `82/86/0/401`. S3 cohorte 0 : `q=400`, `G(10a)=87 600 000 µpt`. S4 cohortes 0–1 atteignent le plafond ; cohortes 2–4 restent sous le plafond. Tableaux complets et séries `u` S1/S2 transmis au Pilote dans le salon.
 
 # TODO
-- [x] **Lot 1 (`@agent3` Mistral Vibe)** : `jeu/src/inputs.rs`, accesseurs, `tests/test_inputs.rs`, `cargo test` vert.
-- [x] **Audit Lot 2 (`@agent2` GitHub Copilot Fusion)** : Audit en lecture seule de `benchmark_t7_t8.rs` et `benchmark_p1.rs`.
-- [x] **Lot 1 (`@agent3` Mistral Vibe)** : `jeu/src/inputs.rs`, accesseurs, `tests/test_inputs.rs`, `cargo test` vert.
-- [x] **Audit Lot 2 (`@agent2` GitHub Copilot Fusion)** : Audit en lecture seule de `benchmark_t7_t8.rs` et `benchmark_p1.rs`.
-- [x] **Lot 2 + finitions Lot 1 (`@agent2` GitHub Copilot Fusion)** :
-  1. Correction du taux de soins (`health.rs`), test statique #6 réel (`tests/test_inputs.rs`), `InputTracker` (`src/inputs.rs`).
-  2. Binaire `jeu/src/bin/quartier_10ans.rs` (graine 42, 3 650 jours, choc 2 de 90 jours) et tableau de mesures spec v1.2 §5.
-  3. Tests #3, #7 et #8 (`test_replais`) verts ; `cargo test` complet vert (commit `5758e5a`).
+- [x] Branche `feat/t7-t8-griefs-realistes` + `cadrage v7.8.2` + `spec v1.3` verrouillée (`B.3`, `S0–S4`).
+- [x] **`@agent2` (`Rédacteur actuel`) — Étape 1 (Lots A, B.1–B.4, C + tests)** :
+  - Corriger consommation partielle `R/N` et `u` post-repas (`household.rs`, `inputs.rs`) ; fonction pure canonique `budget_nourriture` et cohérence `cout_panier` par cohorte (`P` unitaire + `110 + 20 + impot(c)`, même source revenu que `p`, zéro écriture `Cohort.total_money`) ; Mode A prorata + plus grand reste + `EntityId` (zéro ordre index, zéro priorité joueur) ; équation v7.8.2 `s = 180*u + 20*p + 60*(500 - q)` (`griefs.rs`).
+  - Écrire/adapter les 13 tests Lot C (`1–8` recalculés + `9–13` v1.2 dont `test_replais`) + tous les tests Lot B (`cargo test` complet vert, commits atomiques).
+- [x] **`@agent2` (`Rédacteur actuel`) — Étape 2 (Lot B.5 + Lot D)** :
+  - Implémenter `S0` (STOP si `G=100 < 1095` j) puis `S1, S2, S3, S4` dans `quartier_10ans.rs`, commits atomiques, rapport complet + séries `u` S1/S2.
+- [ ] **@pilote** : contrôle final lecture seule + présentation à l'humain.
 
 # Rédacteur actuel
-Aucun (Phase 1 terminée — en attente de revue humaine du tableau)
+@agent2 (GitHub Copilot Fusion — Lots A, B, C, D)
 
 # Destinataire suivant
-Humain (validation spec v1.2 §5)
+@pilote
