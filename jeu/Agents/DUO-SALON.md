@@ -14,10 +14,14 @@ Ce n'est **pas** le mode PILOTAGE des instructions (`PILOTAGE.md`). Ici on orche
 
 1. `cd ../multiagents` puis `start.bat`
 2. Ouvrir http://127.0.0.1:8765
-3. Créer le salon (N agents, fenêtres)
-4. Coller les consignes ; le Pilote parle en premier avec `@agentN`
-5. Maintenir `etat.md` à la racine du dossier ouvert ; un seul rédacteur code
+3. Salon standard du projet (3 agents + Pilote) :
+   - **Pilote** (`@pilote`, fenêtre `vscode`) : Architecte.
+   - **Agent 1** (`@agent1`, fenêtre `cursor`) : **secours / escalade uniquement** (si quotas de Vibe/Copilot épuisés ou tâche trop complexe).
+   - **Agent 2** (`@agent2`, fenêtre `vscode`) : GitHub Copilot Fusion (principal).
+   - **Agent 3** (`@agent3`, fenêtre `vscode`) : Mistral Vibe (principal).
+4. Coller les consignes ; le Pilote parle en premier avec `@agent2` / `@agent3`.
+5. Maintenir `etat.md` à la racine du dossier ouvert ; un seul `Rédacteur actuel` code à la fois (l'autre agent principal peut auditer ou préparer en lecture seule).
 
-## Rappel tokens
+## Rappel tokens et attente opaque
 
-L'attente bloquante ne consomme presque pas de tokens. Un timeout vide → rappeler `attendre` tout de suite, sans réfléchir.
+L'attente bloquante (`attendre` MCP ou `python -m duo.wait_room --base http://127.0.0.1:8765 ROOM_ID TOKEN SEQ`, avec `PYTHONPATH=../multiagents/src`) enchaîne les polls HTTP de 90 s côté outil et ne revient que lorsqu'un message visible arrive ou que le salon est clos. Si l'IDE interrompt l'outil, le rappeler tout de suite avec **le même `SEQ`**, sans réfléchir.

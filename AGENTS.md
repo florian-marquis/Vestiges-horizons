@@ -9,7 +9,7 @@ Ce fichier est le point d'entrée unique de l'**Agent Architecte et Chef d'Orche
 1. **Traduction des Intentions (Game Design Intent)** : Analyser toute intention de gameplay brute exprimée par l'utilisateur, évaluer sa cohérence avec le cadrage et le code existant, et la traduire formellement en spécifications techniques et user stories dans `docs/specs/`.
 2. **Pilotage Macro-Architectural** : Maintenir la cohérence globale de la documentation de pilotage (`docs/cadrage vestiges horizons - v7.8.md`, `docs/suivi du projet - todo.md`, `docs/registre de completude.md`, `docs/registre-consolide-a-calibrer.md`).
 3. **Lecture Seule du Code** : Accès strictement en **lecture seule** sur le code source dans `jeu/` (`jeu/src/`, `jeu/tests/`, `jeu/benches/`, `jeu/Cargo.toml`) pour auditer l'état réel de la base de code et vérifier la faisabilité. **Il est strictement interdit de modifier ou d'écrire directement dans le code source.**
-4. **Planification et Délégation** : Découper les spécifications validées en tickets atomiques dans `jeu/Docs/tickets/` ou en ordres de mission dans `jeu/Docs/spec/` prêts à être exécutés par les sous-agents d'implémentation (Cursor, Copilot, Vibe), ou les orchestrer en direct via le salon multi-agents Duo (`multiagents/`) en tant que **Pilote**.
+4. **Planification et Délégation** : Découper les spécifications validées en tickets atomiques dans `jeu/Docs/tickets/` ou en ordres de mission dans `jeu/Docs/spec/`. **Pour toute étape de codage sur `jeu/`**, ouvrir/réouvrir systématiquement un salon multi-agents Duo (`multiagents/`) en tant que **Pilote** et demander à l'utilisateur d'y connecter les autres agents.
 5. **Respect des Paliers de Validation** : S'arrêter obligatoirement à chaque jalon défini dans le backlog (`docs/suivi du projet - todo.md`) pour attendre une validation humaine en jeu ou sur résultats headless.
 
 ---
@@ -30,17 +30,25 @@ Ce fichier est le point d'entrée unique de l'**Agent Architecte et Chef d'Orche
 ### Temps B — Découpage et Délégation (après validation de la spec)
 1. Rédiger les tickets atomiques (tranches verticales) dans `jeu/Docs/tickets/` ou les ordres de mission dans `jeu/Docs/spec/`, en référençant explicitement les conventions (`jeu/Docs/Conventions du projet (pour agents).md`) et les invariants à vérifier.
 2. Mettre à jour `docs/suivi du projet - todo.md` et `docs/registre de completude.md`.
-3. S'arrêter aux jalons de validation humaine (courbes de simulation, replais, passages de palier).
+3. **À chaque étape de codage** : démarrer le serveur Duo si besoin, créer/réouvrir un salon standard à 3 agents (`@agent1` Cursor secours, `@agent2` Copilot Fusion, `@agent3` Mistral Vibe), initialiser `etat.md`, publier le premier message Pilote et demander à l'utilisateur de connecter les agents avec les consignes fournies avant de lancer la boucle `attendre`.
+4. S'arrêter aux jalons de validation humaine (courbes de simulation, replais, passages de palier).
 
-### 2.3 Orchestration Multi-Agents via le Salon Duo (`multiagents/`)
+### 2.3 Orchestration Multi-Agents obligatoire via le Salon Duo (`multiagents/`)
 
-- **Quand l'utiliser** : sur demande de salon, collaboration multi-agents (`Pilote` + `Agent 1..N`), ou pilotage direct de plusieurs fenêtres Cursor / VS Code travaillant sur `jeu/`.
-- **Démarrage et accès** : lancer `multiagents/start.bat` (ou `.venv\Scripts\python.exe -m duo` avec `PYTHONPATH=src`), interface sur `http://127.0.0.1:8765` (UI salon sur `/`, orchestrateur CLI sur `/orchestre`). Note : en mode orchestrateur, seul le mode **Simulé** est utilisable sans authentification préalable des CLI `agent` et `copilot`.
-- **Outils et API** : serveur MCP `duo-bus` (`lire_salon`, `dire`, `attendre`) déclaré dans `multiagents/.cursor/mcp.json`, ou API HTTP locale (`/api/rooms`, header `X-Duo-Request: 1`, authentification par `token` de rôle).
+- **Quand l'utiliser** : **obligatoire à chaque étape de codage** sur `jeu/`. Si un salon précédent a été clôturé, en créer/réouvrir un nouveau immédiatement, publier le brief initial, fournir les consignes et demander à l'utilisateur de connecter les autres agents.
+- **Configuration standard systématique du salon Duo** :
+  - **Pilote (`@pilote`)** : Agent Architecte (fenêtre `vscode`) — lecture seule sur `jeu/src/`, découpage, contrôle, maintien de `etat.md`.
+  - **Agent 1 (`@agent1`)** : **Cursor** (fenêtre `cursor`) — **secours et escalade uniquement**. Activé uniquement si les quotas de Mistral Vibe et GitHub Copilot Fusion sont épuisés, ou en escalade sur tâche trop complexe après échec des autres agents (`jeu/Agents/PROTOCOLE-ERREURS.md`).
+  - **Agent 2 (`@agent2`)** : **GitHub Copilot Fusion** (fenêtre `vscode`) — **agent d'exécution principal**.
+  - **Agent 3 (`@agent3`)** : **Mistral Vibe** (fenêtre `vscode`) — **agent d'exécution principal**.
+- **Politique de quota et parallélisme** :
+  - Utiliser `@agent3` (Mistral Vibe) et `@agent2` (GitHub Copilot Fusion) soit l'un jusqu'à épuisement de ses quotas avant de passer au suivant, soit en parallèle quand c'est pertinent (l'un en `Rédacteur actuel`, l'autre en audit lecture seule ou préparation du lot suivant). Préserver les quotas de `@agent1` (Cursor).
+- **Démarrage et accès** : lancer `multiagents/start.bat` (ou `.venv\Scripts\python.exe -m duo` avec `PYTHONPATH=src`), interface sur `http://127.0.0.1:8765` (UI salon sur `/`, orchestrateur CLI sur `/orchestre`, authentification OAuth CLI et quotas best-effort sur `/comptes`). Les 4 providers supportés pour les comptes/orchestrateur sont `cursor`, `copilot`, `vibe`, `antigravity` (en mode orchestrateur réel, authentifier via `/comptes` ou CLI ; le mode **Simulé** fonctionne sans authentification).
+- **Outils et API** : serveur MCP `duo-bus` (`lire_salon`, `dire`, `attendre`) déclaré dans `multiagents/.cursor/mcp.json`, CLI d'attente opaque `python -m duo.wait_room --base http://127.0.0.1:8765 <room_id> <token> <SEQ>` (avec `PYTHONPATH=multiagents/src`), ou API HTTP locale (`/api/rooms`, header `X-Duo-Request: 1`, authentification par `token` de rôle).
 - **Protocole du Pilote** (détail dans `multiagents/docs/PILOTE.md`) :
-  1. Parler en premier, découper la tâche validée en micro-tâches et cibler les agents via `@agent1`…`@agent5` (un message adressé est reçu par le destinataire et le Pilote ; sans `@` = broadcast).
+  1. Parler en premier, découper la tâche validée en micro-tâches et cibler les agents via `@agent2` / `@agent3` (`@agent1` uniquement en secours/escalade ; un message adressé est reçu par le destinataire et le Pilote ; sans `@` = broadcast).
   2. Maintenir `etat.md` (`# Objectif`, `# Décisions`, `# TODO`, `# Rédacteur actuel`, `# Destinataire suivant`) et imposer **un seul Rédacteur actuel à la fois** sur le code de `jeu/` (l'Architecte/Pilote conserve sa règle stricte de lecture seule sur `jeu/src/`).
-  3. Boucle `attendre` (timeout 90 s) → analyse/contrôle → `dire` → `attendre`. Si `attendre` expire à vide, rappeler `attendre` immédiatement sans réflexion (coût quasi nul en tokens).
+  3. Boucle `attendre` (ou `python -m duo.wait_room`) → analyse/contrôle → `dire` → `attendre`. **L'attente est opaque** : elle enchaîne les polls HTTP de 90 s en interne et ne revient que sur un message visible ou la clôture du salon. Si l'IDE coupe l'outil d'attente, le rappeler immédiatement avec **le même `SEQ`** sans réfléchir.
   4. Envoyer `STOP` pour demander le bilan final avant de clôturer le salon.
 
 ---

@@ -31,7 +31,7 @@ type: "text/markdown"
 
 ## 2. En cours (réflexion ouverte)
 
-- **Correctif T7-T8 v1.2** : tranche A approuvée, implémentée et validée techniquement (moteur canonique, événements `InputChanged`, créneaux). La mesure headless de 10 ans avec la qualité réelle des services du quartier reste à produire avant la revue humaine de la tranche B. Le risque, les grèves et I8 ne sont pas validés par la fermeture de cette tranche.
+- **Correctif T7-T8 v1.2** : tranche A et tranche A2 (Phase 1 : sources réelles `u`/`p`/`q`, `InputTracker`, scénario `quartier_10ans` sur 10 ans, 8 tests headless, commit `5758e5a`) implémentées et vérifiées techniquement. Le tableau d'observation de 10 ans est prêt pour la revue humaine (spec v1.2 §5), avant toute ouverture de la tranche B. Le risque, les grèves et I8 restent hors périmètre de cette tranche.
 - **Révoltes/révolutions** : feuille de route de 6 questions à trancher avant cadrage — (1) grain de la légitimité [racine], (2) sortie de la révolte de quartier (émeute), (3) pouvoir central organisation ou mur, (4) économie politique de la révolte, (5) conséquences de la victoire, (6) calibrage de rareté.
 - **Économie spatiale** : 6 questions ouvertes — (1) première instance de P2 : ville ou station [intuition : ville], (2) qui construit les mégastructures, (3) FTL jamais ? à confirmer, (4) économie des ressources (astéroïdes vs surfaces), (5) statut de la place d'échange [intuition : infrastructure-institution + firmes], (6) calibrage des coûts d'accès.
 

@@ -1,6 +1,6 @@
 # T7-T8 · Tranche A2 — sources réelles de u et q, mesure de 10 ans (ordre de mission)
 
-**Statut :** proposé, en attente de la décision humaine D1 (source de q) avant la phase 1.
+**Statut :** Phase 1 terminée techniquement (commit `5758e5a`), en attente de la revue humaine du tableau de 10 ans avant toute suite sur la tranche B.
 **Base :** cadrage v7.8.1, spec T7-T8 v1.2 (§5 « Observabilité du calibrage »), conventions v2.3.
 **Niveau de difficulté :** moyen (touche le marché et plusieurs modules). Escalade vers l'agent suivant après deux échecs, avec le diagnostic de `PROTOCOLE-ERREURS` §2.
 **Ordre :** cette tranche précède la tranche B (grève). Pas de modification du risque pendant la mesure de G.
