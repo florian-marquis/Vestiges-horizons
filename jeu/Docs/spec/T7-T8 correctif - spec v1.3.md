@@ -1,7 +1,7 @@
 # Vestiges Horizons — Proposition corrective T7-T8 v1.3
 
 **Date :** 17/11/2026
-**Statut :** spécifié — lots A, B, C, D en exécution (tranche A2 réaliste) ; garde-fou de départ S1–S4 en attente de validation humaine
+**Statut :** spécifié — garde-fou validé le 17/11/2026 (sous conditions : S0 préalable avant S1–S4) ; lots A, B, C, D en exécution (tranche A2 réaliste)
 **Base de design :** `docs/cadrage vestiges horizons - v7.8.md` (révision `v7.8.2`), `jeu/Docs/Conventions du projet (pour agents).md` (v2.3)
 **Remplace :** `jeu/Docs/spec/T7-T8 correctif - spec v1.2.md` sur l'équation de griefs, les règles réalistes de marché/consommation et les tests de fermeture 1 à 4 (les tests 5 à 9 et l'interface événementielle de la v1.2 sont conservés).
 
@@ -46,6 +46,8 @@ budget_nourriture = max(0, revenu - loyer - eau - impot)
 ```
 
 - **Source unique du revenu :** `revenu` est lu depuis la **même source canonique** que celle utilisée pour le calcul de `p` (`SalaireReelEtGriefs` dans `src/salary.rs`). Aucun second calcul du revenu ne doit exister. Le salaire n'entre jamais directement dans `G`.
+- **Cohérence du panier utilisé pour `p` :** le coût du panier par personne utilisé pour calculer `p` contient la ration au prix affiché `P` (`100` au prix de base, jamais l'ancien `×10 = 1 000`) et exactement les mêmes `loyer (110)`, `eau (20)` et `impôt (10 % du revenu)` que `budget_nourriture`, soit `cout_panier(c, P) = P + 110 + 20 + impot(c)`.
+- **Impôt :** l'impôt forfaitaire de `10 %` utilise exclusivement le mécanisme forfaitaire existant de P1 (`src/tax.rs`, `TAX_RATE = 100` millièmes, §6.16 et §17.4 de `Docs/spec P1 - quartier vivant.md`) et `PanierComposante::Fiscalite` — aucun nouveau mécanisme fiscal n'est créé.
 - **Neutralité I1 :** aucune écriture dans `Cohort.total_money` (pas d'épargne ni de crédit dans cette tranche) ; les tests de l'invariant I1 restent intacts.
 - **Note `meal.rs` :** la constante `let budget = 10000;` dans `MealManager::resolve_all_meals` (`jeu/src/meal.rs:330`) ne se trouve pas sur le chemin alimentaire de `quartier_10ans.rs` et reste donc inchangée.
 
@@ -77,10 +79,10 @@ rations_payables(c) = min(besoin(c), budget_nourriture(c) / P)   (division enti�
   - Capacité de stockage maximale : `5` jours (`2 500` rations).
   - Populations des 5 cohortes : `[60, 80, 100, 120, 140]` (total `500`, graine `42`, horizon `3 650` jours).
 - **Constat du Garde-fou sur les anciennes données :** avec `HOURLY_WAGES = [100, 200, 300, 400, 500]`, `8 h/j` et `Logement 2 000 + Eau 500 + Fiscalité 300 = 2 800`, les cohortes 0 à 2 ont `budget_nourriture = 0` (`ratio = 0,00 < 1,0`) dès le premier jour sans choc → **STOP obligatoire**.
-- **Données réalistes proposées (à valider avant d'exécuter S1–S4, puis figées définitivement) :**
-  - Prix de base `P_base = 100` (plafond `300`), charges fixes par personne/jour : `loyer = 110`, `eau = 20`, `impôt = 10%` du revenu brut journalier (troncature entière).
-  - Salaires horaires : `[35, 40, 50, 60, 70]` sur `8 h/j` → revenus bruts/pers. `[280, 320, 400, 480, 560]`, impôts `[28, 32, 40, 48, 56]`, `budget_nourriture`/pers. `[122, 158, 230, 302, 374]`.
-  - Ratio `budget_nourriture / P_base` sans choc : **`[1,22 ; 1,58 ; 2,30 ; 3,02 ; 3,74]`** (cohorte 0 ≈ 1,2, croissance monotone, cohorte 4 ≥ 3). Totaux par cohorte multipliés par la population (ou population active selon la source canonique de `SalaireReelEtGriefs`).
+- **Données réalistes validées le 17/11/2026 (figées, ne jamais modifier après exécution) — voir Annexe ci-dessous :**
+  - Prix de base `P_base = 100` (plafond `300`), charges fixes par personne/jour : `loyer = 110` (fixe même quand le logement s'use), `eau = 20`, `impôt = 10%` du revenu brut journalier (troncature entière, mécanisme forfaitaire P1).
+  - Salaires horaires : `[35, 40, 50, 60, 70]` sur `8 h/j` → revenus moyens par habitant `[280, 320, 400, 480, 560]` (enfants et inactifs compris), impôts `[28, 32, 40, 48, 56]`, `budget_nourriture`/pers. `[122, 158, 230, 302, 374]`.
+  - Ratio `budget_nourriture / P_base` sans choc : **`[1,22 ; 1,58 ; 2,30 ; 3,02 ; 3,74]`** (coût du panier au jour 0 : `[258, 262, 270, 278, 286]`, donc `p = 0` au jour 0 pour toutes les cohortes). Totaux par cohorte agrégés selon les tailles `[60, 80, 100, 120, 140]`.
 
 ### Tests de fermeture du Lot B
 
@@ -140,7 +142,15 @@ s = 180 * u + 20 * p + 60 * (500 - q)
 
 ## Lot D — Scénarios de référence (headless, graine 42, 10 ans)
 
-*Condition de déclenchement :* ne pas lancer ni modifier pour « faire joli » tant que les données de scénario du Garde-fou B.5 ne sont pas validées par l'utilisateur.
+*Données figées :* celles de l'Annexe datée ci-dessous (validées le `17/11/2026`). Ne modifier ni les données ni les coefficients pour « faire joli ».
+
+### Scénario S0 — Témoin nominal sans choc (OBLIGATOIRE avant S1–S4)
+
+- **Paramétrage :** `10 ans` (`3 650` jours), graine `42`, aucun choc, stock initial `2 000` rations, importations `500`/j (avec pipeline d'approvisionnement initial pré-amorcé à `t=0` sur le délai logistique pour éviter une rupture artificielle aux jours 0–2), capacité de stockage max `5` jours (`2 500` rations).
+- **Sorties obligatoires par cohorte :** `p` au jour 0 ; rapport `budget / prix de la ration` ; `u max` ; `G` à `1`, `5` et `10` ans (`jours 365, 1825, 3650`) ; jours `G=0`, `0<G<100`, `G=100` (sur `g_qmicro` exact) ; `q` min/moyen/max.
+- **Règle d'arrêt S0 :** si une cohorte atteint `G=100` en moins de `3` ans (`1 095` jours) sans aucun choc → **STOP immédiat**. Ne retoucher ni les données ni les coefficients ; rapporter les mesures et poser à l'humain la question de la définition de `p` en situations concrètes (règle 34). Si S0 passe, enchaîner sur S1–S4.
+
+### Scénarios S1 à S4 (si S0 validé sans déclenchement d'arrêt)
 
 Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec v1.2 §5 (sur `g_qmicro` exact) enrichi de `u max`, `jours de rationnement`, `prix maximum de la nourriture` et `G maximum` :
 
@@ -150,3 +160,21 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 | **S2** | Pénurie totale : importations à `0` pendant 90 j (`jours 200–289`), puis normales | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
 | **S3** | Dispensaire sous-dimensionné (soins `≈ 0,2` pour la cohorte la plus pauvre), sans faim | Tableau §5 + métriques étendues |
 | **S4** | Logements non entretenus et soins qui baissent sur 10 ans, puis salaire gelé avec prix qui montent | Tableau §5 + métriques étendues |
+
+---
+
+## Annexe — Données figées du scénario (validées le 17/11/2026)
+
+*Paramètres définitifs, consignés datés pour référence et interdits de retouche après lecture des résultats :*
+
+- **Horloge travail et population :** `8 h/j` ; tailles de cohortes `[60, 80, 100, 120, 140]` (total `500` habitants).
+- **Salaires horaires :** `[35, 40, 50, 60, 70]` (soit revenus journaliers par habitant `[280, 320, 400, 480, 560]`).
+- **Nature du revenu :** « revenu par personne » = **revenu moyen PAR HABITANT** (enfants et inactifs compris), pas par travailleur.
+- **Prix et charges par habitant/jour :** prix de base de la ration `P_base = 100` (plafond `300`) ; `loyer = 110` (fixe même quand le logement s'use — choix de scénario assumé) ; `eau = 20` ; `impôt = 10 %` du revenu (`tax::TAX_RATE = 100` millièmes, mécanisme forfaitaire P1 existant §6.16 / §17.4).
+- **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + 110 + 20 + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - 110 - 20 - impot(c))`, tous deux branchés sur la même source de revenu dans `SalaireReelEtGriefs`.
+
+## Points ouverts, non traités (à reporter dans le rapport final)
+
+- Quartier de `500` habitants dans ce scénario contre `150` individus dans le cadrage.
+- Pas d'épargne, pas de crédit, pas d'arriérés de loyer dans cette tranche.
+- `calculer_taux_risque()` utilise `salaire_reel` en direct : à retirer en tranche B.
