@@ -188,3 +188,4 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 - Quartier de `500` habitants dans ce scénario contre `150` individus dans le cadrage.
 - Pas d'épargne, pas de crédit, pas d'arriérés de loyer dans cette tranche.
 - `calculer_taux_risque()` utilise `salaire_reel` en direct : à retirer en tranche B.
+- Épargne / matelas de sécurité (angoisse anticipatoire, chapitre 14) : route candidate, hors tranche, à ne pas fusionner avec `p` (confirmation joueur du 17/11/2026 : « une famille qui dépense presque tout son revenu pour survivre va être de plus en plus tendue, car elle a besoin d'un matelas de sécurité et d'autres dépenses »).
