@@ -82,34 +82,25 @@ pub fn calculate_u_after_meal(rations_mangees: u32, besoin_total: u32) -> u16 {
 // CALCUL DE p (pression des prix)
 // ============================================================================
 
-/// Calcule p = pression des prix depuis le panier et le revenu disponible
+/// Calcule p depuis le taux d'effort du panier sur le revenu journalier.
 ///
-/// Formule (spec P1 §6.2, corrigée dans etat.md) :
-/// - p = 0 si cout_panier == 0 OU revenu_disponible >= cout_panier
-/// - p = ((cout_panier - revenu_disponible) * 1000) / cout_panier, tronqué
-/// - Résultat dans [0, 1000]
+/// Les deux divisions sont tronquées à l'entier inférieur. `p` vaut 0 si le
+/// panier est nul (prioritaire), 1000 si le revenu est nul, sinon le dépassement
+/// du seuil d'effort de 600 millièmes est converti en pression dans `[0, 1000]`.
 ///
 /// @param cout_panier Coût total du panier en centimes
-/// @param revenu_disponible Revenu disponible en centimes
+/// @param revenu_disponible Revenu journalier en centimes
 /// @returns p en millièmes [0, 1000]
 pub fn calculate_p(cout_panier: u64, revenu_disponible: u64) -> u16 {
-    // p = 0 si cout_panier == 0 (éviter division par zéro)
     if cout_panier == 0 {
         return 0;
     }
-
-    // p = 0 si revenu_disponible >= cout_panier
-    if revenu_disponible >= cout_panier {
-        return 0;
+    if revenu_disponible == 0 {
+        return 1000;
     }
 
-    // Calcul : ((cout_panier - revenu_disponible) * 1000) / cout_panier
-    let difference = cout_panier.saturating_sub(revenu_disponible);
-    let numerator = u128::from(difference) * 1000;
-    let result = (numerator / u128::from(cout_panier)) as u16;
-
-    // Borne à 1000
-    result.min(1000)
+    let effort = u128::from(cout_panier) * 1000 / u128::from(revenu_disponible);
+    ((effort.saturating_sub(600) * 1000 / 400).min(1000)) as u16
 }
 
 // ============================================================================
@@ -410,34 +401,33 @@ mod tests {
         #[test]
         fn test_p_zero_when_cout_panier_zero() {
             assert_eq!(calculate_p(0, 1000), 0);
+            assert_eq!(calculate_p(0, 0), 0);
         }
 
         #[test]
-        fn test_p_zero_when_revenu_suffisant() {
-            // revenu >= cout_panier => p = 0
-            assert_eq!(calculate_p(1000, 1000), 0);
-            assert_eq!(calculate_p(1000, 1500), 0);
+        fn test_p_uses_the_effort_threshold() {
+            assert_eq!(calculate_p(3, 5), 0);
+            assert_eq!(calculate_p(601, 1000), 2);
+            assert_eq!(calculate_p(1000, 2000), 0);
+            assert_eq!(calculate_p(1000, 1000), 1000);
+            assert_eq!(calculate_p(1000, 1500), 165);
         }
 
         #[test]
-        fn test_p_exact_calculation() {
-            // cout_panier = 1000, revenu = 800
-            // p = ((1000 - 800) * 1000) / 1000 = 200
-            assert_eq!(calculate_p(1000, 800), 200);
+        fn test_p_truncates_both_integer_divisions() {
+            // effort = floor(1_000_000 / 1_499) = 667; p = floor(67_000 / 400) = 167.
+            assert_eq!(calculate_p(1000, 1499), 167);
         }
 
         #[test]
         fn test_p_capped_at_1000() {
-            // revenu = 0, cout_panier = 1000
-            // p = ((1000 - 0) * 1000) / 1000 = 1000
             assert_eq!(calculate_p(1000, 0), 1000);
+            assert_eq!(calculate_p(u64::MAX, 1), 1000);
         }
 
         #[test]
         fn test_p_partial_pressure() {
-            // cout_panier = 2000, revenu = 1500
-            // p = ((2000 - 1500) * 1000) / 2000 = 500000 / 2000 = 250
-            assert_eq!(calculate_p(2000, 1500), 250);
+            assert_eq!(calculate_p(1000, 1500), 165);
         }
     }
 
@@ -516,7 +506,7 @@ mod tests {
         fn test_different_cohorts_different_inputs() {
             // Cohorte 1 : shortage sévère
             let u1 = calculate_u(50, 100); // 500
-            let p1 = calculate_p(2000, 1000); // 500
+            let p1 = calculate_p(2000, 1000); // 1000
             let q1 = calculate_q_from_components(800, 600); // 700
 
             // Cohorte 2 : situation normale

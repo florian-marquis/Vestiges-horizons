@@ -141,30 +141,26 @@ fn test_all_inputs_in_range() {
 fn test_p_zero_when_cout_panier_zero() {
     let p = calculate_p(0, 1000);
     assert_eq!(p, 0, "p doit être 0 quand cout_panier = 0");
+    assert_eq!(calculate_p(0, 0), 0);
 }
 
 #[test]
-fn test_p_zero_when_revenu_suffisant() {
-    // revenu >= cout_panier → p = 0
-    let p = calculate_p(1000, 1000);
-    assert_eq!(p, 0, "p doit être 0 quand revenu >= cout_panier");
-
-    let p = calculate_p(1000, 1500);
-    assert_eq!(p, 0, "p doit être 0 quand revenu > cout_panier");
+fn test_p_uses_the_effort_threshold() {
+    assert_eq!(calculate_p(3, 5), 0);
+    assert_eq!(calculate_p(601, 1000), 2);
+    assert_eq!(calculate_p(1000, 2000), 0);
+    assert_eq!(calculate_p(1000, 1000), 1000);
+    assert_eq!(calculate_p(1000, 1500), 165);
 }
 
 #[test]
-fn test_p_exact_calculation() {
-    // cout_panier = 1000, revenu = 800
-    // p = ((1000 - 800) * 1000) / 1000 = 200
-    let p = calculate_p(1000, 800);
-    assert_eq!(p, 200, "p doit être 200 pour cout_panier=1000, revenu=800");
+fn test_p_truncates_both_integer_divisions() {
+    let p = calculate_p(1000, 1499);
+    assert_eq!(p, 167, "les deux divisions doivent tronquer à l'entier inférieur");
 }
 
 #[test]
 fn test_p_capped_at_1000() {
-    // revenu = 0, cout_panier = 1000
-    // p = ((1000 - 0) * 1000) / 1000 = 1000
     let p = calculate_p(1000, 0);
     assert_eq!(p, 1000, "p doit être 1000 quand revenu = 0");
 }
@@ -286,7 +282,7 @@ fn test_different_cohorts_different_q() {
 fn test_different_cohorts_different_inputs_combined() {
     // Cohorte 1 : shortage sévère, services médiocres, pression prix élevée
     let u1 = calculate_u(50, 100); // 500
-    let p1 = calculate_p(2000, 1000); // 500
+    let p1 = calculate_p(2000, 1000); // 1000
     let q1 = calculate_q_from_components(600, 400); // 500
 
     // Cohorte 2 : situation normale
@@ -337,12 +333,11 @@ fn test_u_uses_integer_arithmetic() {
 
 #[test]
 fn test_p_uses_integer_arithmetic() {
-    // Vérification indirecte : p utilise l'arithmétique entière
-
-    // Cas : cout_panier = 3, revenu = 1
-    // p = ((3 - 1) * 1000) / 3 = 2000 / 3 = 666 (troncature)
-    let p = calculate_p(3, 1);
-    assert_eq!(p, 666, "p doit utiliser l'arithmétique entière");
+    assert_eq!(
+        calculate_p(u64::MAX, 1),
+        1000,
+        "les intermédiaires u128 doivent éviter le débordement"
+    );
 }
 
 #[test]
@@ -465,22 +460,22 @@ fn test_salaire_reel_et_griefs_p_integration() {
     sr.heures_travaillees = 8; // 8 heures
 
     // revenu_disponible = 500 * 8 = 4000 centimes = 40€
-    // p = 0 car revenu > cout_panier
+    // effort = 250, donc p = 0
     let p = sr.calculate_p(None);
     assert_eq!(
         p, 0,
-        "SalaireReelEtGriefs::calculate_p doit retourner 0 quand revenu > cout_panier"
+        "SalaireReelEtGriefs::calculate_p doit retourner 0 sous le seuil d'effort"
     );
 
-    // Avec revenu insuffisant
+    // Avec un effort supérieur au plafond d'effort de 600 millièmes
     sr.salaire_horaire = 100; // 1€/heure
     sr.heures_travaillees = 8; // 8 heures
                                // revenu = 100 * 8 = 800 centimes = 8€
-                               // p = ((1000 - 800) * 1000) / 1000 = 200
+                               // effort = 1250, donc p est plafonné à 1000
     let p = sr.calculate_p(None);
     assert_eq!(
-        p, 200,
-        "SalaireReelEtGriefs::calculate_p doit retourner 200"
+        p, 1000,
+        "SalaireReelEtGriefs::calculate_p doit retourner 1000"
     );
 }
 

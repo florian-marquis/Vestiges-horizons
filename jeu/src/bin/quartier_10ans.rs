@@ -769,8 +769,9 @@ mod tests {
             .price_history
             .iter()
             .all(|&price| price == BASE_FOOD_PRICE));
-        for (_, stats) in &report.cohorts {
-            assert_eq!(stats.p_day_zero, Some(0));
+        let expected_p_day_zero = [802, 545, 187, 0, 0];
+        for (index, (_, stats)) in report.cohorts.iter().enumerate() {
+            assert_eq!(stats.p_day_zero, Some(expected_p_day_zero[index]));
             assert_eq!(stats.u_max, 0);
             assert_eq!(stats.days_rationed, 0);
             assert_eq!(stats.g_max_qmicro, 0);

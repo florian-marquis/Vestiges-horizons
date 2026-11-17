@@ -138,14 +138,12 @@ impl SalaireReelEtGriefs {
         self.revenu_journalier().saturating_sub(charges)
     }
     
-    /// Calcule p (pression des prix) pour cette entité
+    /// Calcule p selon le taux d'effort du panier sur le revenu journalier.
     ///
-    /// Formule (spec P1 §6.2, corrigée) :
-    /// - p = 0 si cout_panier == 0 OU revenu_disponible >= cout_panier
-    /// - p = ((cout_panier - revenu_disponible) * 1000) / cout_panier sinon (troncature entière)
-    /// - Résultat dans [0, 1000]
+    /// `None` utilise `revenu_journalier`; le calcul entier et ses bornes sont
+    /// définis dans `inputs::calculate_p`.
     ///
-    /// @param revenu_disponible Revenu disponible en centimes (par défaut : salaire_horaire * heures_travaillees)
+    /// @param revenu_disponible Revenu journalier en centimes (par défaut : salaire_horaire * heures_travaillees)
     /// @returns p en millièmes [0, 1000]
     pub fn calculate_p(&self, revenu_disponible: Option<u64>) -> u16 {
         let rev = revenu_disponible.unwrap_or_else(|| self.revenu_journalier());
@@ -404,6 +402,7 @@ mod tests {
             (70, 560, 56, 374),
         ];
 
+        let expected_p = [802, 545, 187, 0, 0];
         for (index, (hourly_wage, income, tax, food_budget)) in cohorts.into_iter().enumerate() {
             let entity = EntityId::new(crate::entities::EntityType::Cohort, index as u64 + 1);
             manager.ajouter_entite(entity);
@@ -427,7 +426,7 @@ mod tests {
             assert_eq!(state.impot_journalier(), tax);
             assert_eq!(state.budget_nourriture(0), food_budget);
             assert_eq!(state.cout_panier, 100 + 110 + 20 + tax);
-            assert_eq!(state.calculate_p(None), 0);
+            assert_eq!(state.calculate_p(None), expected_p[index]);
         }
     }
 
