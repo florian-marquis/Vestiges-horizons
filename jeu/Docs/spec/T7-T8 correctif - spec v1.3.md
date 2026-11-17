@@ -39,10 +39,10 @@ u = min(1000, ((besoin_total - rations_mangees) * 1000) / besoin_total)   (tronc
 
 ### B.2 Budget nourriture canonique (Option 1 — Reste à vivre)
 
-- Une fonction pure unique `budget_nourriture(cohorte, jour)` (non stockée) calcule en entiers le budget alimentaire journalier d'une cohorte ou personne :
+- Une fonction pure unique `budget_nourriture(cohorte, jour)` (non stockée) calcule en entiers le budget alimentaire journalier d'une cohorte ou personne en lisant `loyer` et `eau` directement sur le panier de la cohorte (`self.panier.logement`, `self.panier.eau`) et non via des constantes en dur :
 
 ```text
-budget_nourriture = max(0, revenu - loyer - eau - impot)
+budget_nourriture = max(0, revenu - self.panier.logement - self.panier.eau - impot)
 ```
 
 - **Source unique du revenu :** `revenu` est lu depuis la **même source canonique** que celle utilisée pour le calcul de `p` (`SalaireReelEtGriefs` dans `src/salary.rs`). Aucun second calcul du revenu ne doit exister. Le salaire n'entre jamais directement dans `G`.
@@ -57,8 +57,8 @@ budget_nourriture = max(0, revenu - loyer - eau - impot)
 - **Paramètres entiers verrouillés (Lot A.2 & B.3) :**
   - Stock initial à `t = 0` : `2 000` rations ; pipeline d'importation (`GoodType::Food`, délai `3` jours) pré-amorcé à `t = 0` avec `500` rations livrées aux jours `0, 1, 2`.
   - Chaque matin après livraison des imports du jour, le stock du marché alimentaire est plafonné à la capacité maximale de `5` jours (`2 500` rations = `5 × 500`).
-  - `Market::auto_reprice()` est appelé une fois par jour avant les achats avec `stock_thresholds = (2_500, 2_499)`, `price_bounds = (100, 300)` (`P_base = 100`, plafond `3 × P_base = 300`) et `price_step = 10` centimes/jour.
-  - Conséquence déterministe : en nominal (`stock = 2 500` avant achats), `P` reste fixe à `100` ; sous `5` jours de couverture (`stock < 2 500`), `P` monte de `+10`/j jusqu'à `300` ; dès reconstitution du stock à `2 500` (via baisse des achats ou retour d'imports), `P` redescend de `-10`/j jusqu'à `100` (`> high_threshold = 2_499`). `P` reste toujours strictement positif et fini.
+  - `Market::auto_reprice()` est appelé une fois par jour avant les achats avec `stock_thresholds = (2_500, 2_499)`, `price_bounds = (100, 600)` (`P_base = 100`, plafond `6 × P_base = 600`, valeur à calibrer — révisé de ×3 à ×6 au Lot F) et `price_step = 10` centimes/jour (`+10`/j sous 5 j de couverture, soit 50 j pour atteindre ×6 ; `-10`/j au retour à `2 500` rations).
+  - Conséquence déterministe : en nominal (`stock = 2 500` avant achats), `P` reste fixe à `100` ; sous `5` jours de couverture (`stock < 2 500`), `P` monte progressivement de `+10`/j jusqu'à `600` ; dès reconstitution du stock à `2 500` (via baisse des achats ou retour d'imports), `P` redescend de `-10`/j jusqu'à `100` (`> high_threshold = 2_499`). `P` reste toujours strictement positif et fini.
 
 ### B.4 Achat partiel et rationnement (Mode A)
 
@@ -84,7 +84,7 @@ rations_payables(c) = min(besoin(c), budget_nourriture(c) / P)   (division enti�
   - Populations des 5 cohortes : `[60, 80, 100, 120, 140]` (total `500`, graine `42`, horizon `3 650` jours).
 - **Constat du Garde-fou sur les anciennes données :** avec `HOURLY_WAGES = [100, 200, 300, 400, 500]`, `8 h/j` et `Logement 2 000 + Eau 500 + Fiscalité 300 = 2 800`, les cohortes 0 à 2 ont `budget_nourriture = 0` (`ratio = 0,00 < 1,0`) dès le premier jour sans choc → **STOP obligatoire**.
 - **Données réalistes validées le 17/11/2026 (figées, ne jamais modifier après exécution) — voir Annexe ci-dessous :**
-  - Prix de base `P_base = 100` (plafond `300`), charges fixes par personne/jour : `loyer = 110` (fixe même quand le logement s'use), `eau = 20`, `impôt = 10%` du revenu brut journalier (troncature entière, mécanisme forfaitaire P1).
+  - Prix de base `P_base = 100` (plafond relevé à `600` = `×6` au Lot F, valeur à calibrer), charges fixes par personne/jour : `loyer = 110` (fixe même quand le logement s'use), `eau = 20`, `impôt = 10%` du revenu brut journalier (troncature entière, mécanisme forfaitaire P1).
   - Salaires horaires : `[35, 40, 50, 60, 70]` sur `8 h/j` → revenus moyens par habitant `[280, 320, 400, 480, 560]` (enfants et inactifs compris), impôts `[28, 32, 40, 48, 56]`, `budget_nourriture`/pers. `[122, 158, 230, 302, 374]`.
   - Ratio `budget_nourriture / P_base` sans choc : **`[1,22 ; 1,58 ; 2,30 ; 3,02 ; 3,74]`** (coût du panier au jour 0 : `[258, 262, 270, 278, 286]`, donc `p = 0` au jour 0 pour toutes les cohortes). Totaux par cohorte agrégés selon les tailles `[60, 80, 100, 120, 140]`.
 
@@ -93,7 +93,7 @@ rations_payables(c) = min(besoin(c), budget_nourriture(c) / P)   (division enti�
 1. **Stock et conservation :** stock du marché toujours `>= 0` ; `rations achetées = sorties de stock = rations mangées + variation du stock foyer`.
 2. **Invariance d'ordre (convention 18) :** permuter l'ordre des cohortes produit un état final et un journal d'événements strictement identiques.
 3. **Contrainte budgétaire :** aucune cohorte ne dépense plus que `budget_nourriture`.
-4. **Prix fini et réversible :** `P` reste fini, `<= 3 * P_base`, monte sous 5 jours de couverture puis redescend lors du retour du stock.
+4. **Prix fini et réversible :** `P` reste fini, `<= 6 * P_base` (`600`), monte sous 5 jours de couverture puis redescend lors du retour du stock.
 5. **Service complet au prix de base :** sans choc et à `P = P_base`, toutes les cohortes sont servies intégralement.
 6. **Décrochage progressif à prix ×1,5 :** à `P = 150`, la cohorte la plus pauvre est servie partiellement tandis que la cohorte la plus aisée reste servie intégralement.
 7. **Neutralité `total_money` :** zéro écriture dans `Cohort.total_money`, suite de tests I1 inchangée.
@@ -168,7 +168,7 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 | **S1** | Pénurie partielle : arrivages effectifs `250`/j (`÷2`) du jour `200` au jour `289` inclus, puis `500`/j dès le jour `290` | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
 | **S2** | Pénurie totale : arrivages effectifs `0`/j du jour `200` au jour `289` inclus, puis `500`/j dès le jour `290` | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
 | **S3** | Sans faim (`500`/j) ; logements entretenus (`[600, 700, 800, 900, 1000]`, `wear_rate = 0`) ; cohorte `0` avec dispensaire sous-dimensionné (`care_capacity = 6`, `daily_care_demand = 30` → `soins = 200`, `q = 400 < 500`), cohortes `1–4` à `soins = 1000` | Tableau §5 + métriques étendues |
-| **S4** | Logements non entretenus (`[600, 700, 800, 900, 1000]`, `wear_rate = 1`) ; soins déclinants linéairement (`demande = population`, `capacite(day) = (population * (3650 - day)) / 3650`, troncature entière, de `1000` à `0` sur 10 ans) ; salaires gelés (`[35, 40, 50, 60, 70]`) et arrivages effectifs décroissants à partir du jour `1 825` : `500 - (((day - 1825) * 150) / 1825)` (contraction vers `350`/j faisant monter `P` vers `300`) | Tableau §5 + métriques étendues |
+| **S4** | Logements non entretenus (`[600, 700, 800, 900, 1000]`, `wear_rate = 1`) ; soins déclinants linéairement (`demande = population`, `capacite(day) = (population * (3650 - day)) / 3650`, troncature entière, de `1000` à `0` sur 10 ans) ; salaires gelés (`[35, 40, 50, 60, 70]`) et arrivages effectifs décroissants à partir du jour `1 825` : `500 - (((day - 1825) * 150) / 1825)` (contraction vers `350`/j faisant monter `P` jusqu'au plafond `600`) | Tableau §5 + métriques étendues |
 
 ---
 
@@ -179,8 +179,9 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 - **Horloge travail et population :** `8 h/j` ; tailles de cohortes `[60, 80, 100, 120, 140]` (total `500` habitants).
 - **Salaires horaires :** `[35, 40, 50, 60, 70]` (soit revenus journaliers par habitant `[280, 320, 400, 480, 560]`).
 - **Nature du revenu :** « revenu par personne » = **revenu moyen PAR HABITANT** (enfants et inactifs compris), pas par travailleur.
-- **Prix et charges par habitant/jour :** prix de base de la ration `P_base = 100` (plafond `300`) ; `loyer = 110` (fixe même quand le logement s'use — choix de scénario assumé) ; `eau = 20` ; `impôt = 10 %` du revenu (`tax::TAX_RATE = 100` millièmes, mécanisme forfaitaire P1 existant §6.16 / §17.4).
-- **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + 110 + 20 + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - 110 - 20 - impot(c))`, tous deux branchés sur la même source de revenu dans `SalaireReelEtGriefs`.
+- **Prix et charges par habitant/jour :** prix de base de la ration `P_base = 100` (plafond relevé au Lot F de `×3` à `×6` = `600`, valeur à calibrer, pas `+10`/j sous 5 j de stock) ; `loyer = 110` (fixe même quand le logement s'use — choix de scénario assumé) ; `eau = 20` ; `impôt = 10 %` du revenu (`tax::TAX_RATE = 100` millièmes, mécanisme forfaitaire P1 existant §6.16 / §17.4).
+- **Motif de relèvement du plafond de prix (Lot F, 17/11/2026) :** *à ×3, des cohortes capables de payer plus restent sous-servies ; le prix doit pouvoir atteindre l'équilibre du marché (environ ×5 en S1).*
+- **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + 110 + 20 + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - self.panier.logement - self.panier.eau - impot(c))`, tous deux branchés sur la même source de revenu et le même panier dans `SalaireReelEtGriefs`.
 
 ## Points ouverts, non traités (à reporter dans le rapport final)
 
