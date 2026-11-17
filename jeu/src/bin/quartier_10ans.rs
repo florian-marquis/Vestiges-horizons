@@ -35,6 +35,7 @@ const MAX_GRIEFS_QMICRO: i64 = 400_000_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ScenarioKind {
     S0,
+    S0b,
     S1,
     S2,
     S3,
@@ -45,6 +46,7 @@ impl ScenarioKind {
     fn label(self) -> &'static str {
         match self {
             Self::S0 => "S0 nominal sans choc",
+            Self::S0b => "S0b nominal sans choc, q=500",
             Self::S1 => "S1 imports divises par deux",
             Self::S2 => "S2 imports interrompus",
             Self::S3 => "S3 soins sous-dimensionnes",
@@ -240,6 +242,10 @@ fn daily_care_rate(cohort_id: EntityId, day: i64, demand: u32, capacity: u32) ->
 fn scenario_care(kind: ScenarioKind, cohort: &CohortState, day: i64) -> (u32, u32) {
     match kind {
         ScenarioKind::S3 if cohort.index == 0 => (30, 6),
+        ScenarioKind::S0b => {
+            let population = POPULATIONS[cohort.index];
+            (population.saturating_mul(2), population)
+        }
         ScenarioKind::S4 => {
             let capacity =
                 (u64::from(POPULATIONS[cohort.index]) * (DAYS - day) as u64 / DAYS as u64) as u32;
@@ -323,6 +329,11 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
             (ScenarioKind::S3, 0) => 30,
             _ => population,
         };
+        let housing_state = if kind == ScenarioKind::S0b {
+            500
+        } else {
+            INITIAL_HOUSING_STATES[index]
+        };
         cohorts.push(CohortState {
             index,
             id: cohort_id,
@@ -330,7 +341,7 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
             housing: Asset::new(
                 EntityId::new(EntityType::Asset, cohort_id.number),
                 AssetType::Building,
-                INITIAL_HOUSING_STATES[index],
+                housing_state,
                 0,
                 if kind.has_worn_housing() { 1 } else { 0 },
                 EntityId::new(EntityType::Firm, cohort_id.number),
@@ -567,6 +578,19 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
             early_stop_day = Some(next_day);
             break;
         }
+        if kind == ScenarioKind::S0b
+            && next_day < DAYS
+            && cohorts.iter().any(|cohort| {
+                salary
+                    .entites
+                    .get(&cohort.id)
+                    .map(|state| state.griefs.g_qmicro() == MAX_GRIEFS_QMICRO)
+                    .unwrap_or(false)
+            })
+        {
+            early_stop_day = Some(next_day);
+            break;
+        }
     }
 
     Ok(ScenarioReport {
@@ -604,7 +628,11 @@ fn print_report(report: &ScenarioReport) {
         report.market_stockout_days
     );
     if let Some(day) = report.early_stop_day {
-        println!("ARRÊT OBLIGATOIRE S0 : G=100 atteint au jour {day} (< 1095).");
+        if report.kind == ScenarioKind::S0b {
+            println!("ARRÊT OBLIGATOIRE S0b : G=100 atteint au jour {day} (< 3650).");
+        } else {
+            println!("ARRÊT OBLIGATOIRE S0 : G=100 atteint au jour {day} (< 1095).");
+        }
     }
     println!(
         "idx | p0 | budget/P | u max | G365 qµpt | G1825 qµpt | G3650 qµpt | Gmax qµpt | G=0 | partiel | G=100 | q min/moy/max | j rationnés"
@@ -663,6 +691,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let s0 = run_scenario(ScenarioKind::S0)?;
     print_report(&s0);
     if s0.early_stop_day.is_some() {
+        return Ok(());
+    }
+
+    let s0b = run_scenario(ScenarioKind::S0b)?;
+    print_report(&s0b);
+    if s0b.early_stop_day.is_some() {
         return Ok(());
     }
 
@@ -775,6 +809,36 @@ mod tests {
             assert_eq!(stats.u_max, 0);
             assert_eq!(stats.days_rationed, 0);
             assert_eq!(stats.g_max_qmicro, 0);
+        }
+    }
+
+    #[test]
+    fn s0b_keeps_q_at_500_with_nominal_inputs() {
+        assert_eq!(
+            calculate_q(&[
+                (ServiceComponent::Soins, 500),
+                (ServiceComponent::Logements, 500),
+            ]),
+            500
+        );
+
+        let report = run_scenario(ScenarioKind::S0b).unwrap();
+        assert_eq!(report.early_stop_day, None);
+        assert!(report
+            .import_history
+            .iter()
+            .all(|&quantity| quantity == DAILY_IMPORT));
+        assert!(report
+            .price_history
+            .iter()
+            .all(|&price| price == BASE_FOOD_PRICE));
+
+        let expected_p_day_zero = [802, 545, 187, 0, 0];
+        for (index, (_, stats)) in report.cohorts.iter().enumerate() {
+            assert_eq!(stats.q_min, 500);
+            assert_eq!(stats.q_max, 500);
+            assert_eq!(stats.p_day_zero, Some(expected_p_day_zero[index]));
+            assert_eq!(stats.u_max, 0);
         }
     }
 
