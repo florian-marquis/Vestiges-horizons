@@ -1,6 +1,8 @@
 # Vestiges Horizons — Proposition corrective T7-T8 v1.2
 
-**Statut :** tranche A approuvée, implémentée et validée techniquement
+> **Erratum (17/11/2026) :** ce document est conservé comme archive de la tranche A (`v7.8` / `v7.8.1`). Pour la tranche A2 réaliste (cadrage `v7.8.2`), l'équation de griefs (`0,18 u + 0,02 p - 0,06(q - 0,5)`), les règles de consommation/marché réalistes et les tests de fermeture 1 à 4 recalculés sont définis dans `jeu/Docs/spec/T7-T8 correctif - spec v1.3.md`. Les tests 5 à 9 et l'interface événementielle de la v1.2 restent inchangés.
+
+**Statut :** tranche A approuvée, implémentée et validée techniquement (remplacée sur le calibrage par v1.3)
 **Base de design :** cadrage v7.8, révision v7.8.1
 **Périmètre :** dynamique entière des griefs et temps logique ; aucun correctif du risque ou des grèves dans cette tranche.
 **Articulation :** le contrat cible complet de T7-T8 reste défini dans `Docs/spec P1 - quartier vivant.md` (§19 et §35). Cette proposition ne précise que la tranche A et ne vaut pas fermeture de T7-T8 ; les décisions et validations des étapes suivantes restent ouvertes.
