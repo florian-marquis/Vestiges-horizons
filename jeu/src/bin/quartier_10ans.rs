@@ -20,7 +20,8 @@ const INITIAL_FOOD_STOCK: u32 = 2_000;
 const DAILY_IMPORT: u32 = 500;
 const MAX_FOOD_STOCK: u32 = 2_500;
 const BASE_FOOD_PRICE: u64 = 100;
-const MAX_FOOD_PRICE: u64 = 300;
+const MAX_FOOD_PRICE: u64 = 600;
+// Repricing runs daily: +10 below the five-day stock cap, -10 at full stock; 50 rises reach 600.
 const FOOD_PRICE_STEP: u64 = 10;
 const SHOCK_START_DAY: i64 = 200;
 const SHOCK_END_DAY: i64 = 290;
