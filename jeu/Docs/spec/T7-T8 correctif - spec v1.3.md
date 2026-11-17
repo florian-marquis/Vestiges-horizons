@@ -53,8 +53,12 @@ budget_nourriture = max(0, revenu - loyer - eau - impot)
 
 ### B.3 Prix affiché de la nourriture
 
-- Le prix affiché `P` du jour est fixé **avant** la résolution des achats du jour, uniquement à partir de la couverture de stock de la veille (`stock_veille / demande_nominale_jour`, aucun recalcul réentrant dans le même instant, règle 18).
-- Lorsque la couverture tombe sous `5` jours de stock, `P` augmente progressivement en entiers jusqu'au plafond `3 × P_base` (`300` centimes pour `P_base = 100`). Lorsque le stock se reconstitue au-dessus des seuils de reprise, `P` redescend progressivement vers `P_base`. `P` reste toujours strictement positif et fini.
+- Le prix affiché `P` du jour est fixé **avant** la résolution des achats du jour, uniquement à partir de la couverture de stock disponible avant les achats (aucun recalcul réentrant dans le même instant, règle 18).
+- **Paramètres entiers verrouillés (Lot A.2 & B.3) :**
+  - Stock initial à `t = 0` : `2 000` rations ; pipeline d'importation (`GoodType::Food`, délai `3` jours) pré-amorcé à `t = 0` avec `500` rations livrées aux jours `0, 1, 2`.
+  - Chaque matin après livraison des imports du jour, le stock du marché alimentaire est plafonné à la capacité maximale de `5` jours (`2 500` rations = `5 × 500`).
+  - `Market::auto_reprice()` est appelé une fois par jour avant les achats avec `stock_thresholds = (2_500, 2_499)`, `price_bounds = (100, 300)` (`P_base = 100`, plafond `3 × P_base = 300`) et `price_step = 10` centimes/jour.
+  - Conséquence déterministe : en nominal (`stock = 2 500` avant achats), `P` reste fixe à `100` ; sous `5` jours de couverture (`stock < 2 500`), `P` monte de `+10`/j jusqu'à `300` ; dès reconstitution du stock à `2 500` (via baisse des achats ou retour d'imports), `P` redescend de `-10`/j jusqu'à `100` (`> high_threshold = 2_499`). `P` reste toujours strictement positif et fini.
 
 ### B.4 Achat partiel et rationnement (Mode A)
 
@@ -152,14 +156,19 @@ s = 180 * u + 20 * p + 60 * (500 - q)
 
 ### Scénarios S1 à S4 (si S0 validé sans déclenchement d'arrêt)
 
+*Paramétrage commun verrouillé S0–S3 (logements et arrivages) :*
+- États initiaux des logements ordonnés de la cohorte 0 (pauvre) à la cohorte 4 (aisée) : `INITIAL_HOUSING_STATES = [600, 700, 800, 900, 1000]`.
+- En **S0, S1, S2, S3** : logements entretenus (`wear_rate = 0`). En **S0, S1, S2**, dispensaire nominal (`soins = 1000`), soit `q = [800, 850, 900, 950, 1000]`.
+- En **S1 et S2** : la fenêtre `jours 200–289` (`90` jours) porte sur les **arrivages effectifs** au marché (commandes réduites aux jours `197..=286` avec le délai logistique de `3` jours, afin que les livraisons effectives tombent à `250`/j en S1 et `0`/j en S2 exactement du jour `200` au jour `289` inclus, puis reviennent à `500`/j dès le jour `290`).
+
 Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec v1.2 §5 (sur `g_qmicro` exact) enrichi de `u max`, `jours de rationnement`, `prix maximum de la nourriture` et `G maximum` :
 
-| Scénario | Paramétrage | Sorties additionnelles exigées |
+| Scénario | Paramétrage verrouillé | Sorties additionnelles exigées |
 | --- | --- | --- |
-| **S1** | Pénurie partielle : importations `÷2` pendant 90 j (`jours 200–289`), puis normales (`500`/j) | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
-| **S2** | Pénurie totale : importations à `0` pendant 90 j (`jours 200–289`), puis normales | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
-| **S3** | Dispensaire sous-dimensionné (soins `≈ 0,2` pour la cohorte la plus pauvre), sans faim | Tableau §5 + métriques étendues |
-| **S4** | Logements non entretenus et soins qui baissent sur 10 ans, puis salaire gelé avec prix qui montent | Tableau §5 + métriques étendues |
+| **S1** | Pénurie partielle : arrivages effectifs `250`/j (`÷2`) du jour `200` au jour `289` inclus, puis `500`/j dès le jour `290` | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
+| **S2** | Pénurie totale : arrivages effectifs `0`/j du jour `200` au jour `289` inclus, puis `500`/j dès le jour `290` | Série `u` jour par jour pendant le choc (cohorte pauvre + cohorte moyenne) |
+| **S3** | Sans faim (`500`/j) ; logements entretenus (`[600, 700, 800, 900, 1000]`, `wear_rate = 0`) ; cohorte `0` avec dispensaire sous-dimensionné (`care_capacity = 6`, `daily_care_demand = 30` → `soins = 200`, `q = 400 < 500`), cohortes `1–4` à `soins = 1000` | Tableau §5 + métriques étendues |
+| **S4** | Logements non entretenus (`[600, 700, 800, 900, 1000]`, `wear_rate = 1`) ; soins déclinants linéairement (`demande = population`, `capacite(day) = (population * (3650 - day)) / 3650`, troncature entière, de `1000` à `0` sur 10 ans) ; salaires gelés (`[35, 40, 50, 60, 70]`) et arrivages effectifs décroissants à partir du jour `1 825` : `500 - (((day - 1825) * 150) / 1825)` (contraction vers `350`/j faisant monter `P` vers `300`) | Tableau §5 + métriques étendues |
 
 ---
 
