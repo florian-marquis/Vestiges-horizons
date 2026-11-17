@@ -1,7 +1,7 @@
 # Vestiges Horizons — Proposition corrective T7-T8 v1.3
 
 **Date :** 17/11/2026
-**Statut :** spécifié — garde-fou validé le 17/11/2026 (sous conditions : S0 préalable avant S1–S4) ; lots A, B, C, D en exécution (tranche A2 réaliste)
+**Statut :** spécifié — lot G (remplace et complète le lot F, révision du 17/11/2026) en exécution sur `feat/t7-t8-griefs-realistes` (tranche A2 réaliste)
 **Base de design :** `docs/cadrage vestiges horizons - v7.8.md` (révision `v7.8.2`), `jeu/Docs/Conventions du projet (pour agents).md` (v2.3)
 **Remplace :** `jeu/Docs/spec/T7-T8 correctif - spec v1.2.md` sur l'équation de griefs, les règles réalistes de marché/consommation et les tests de fermeture 1 à 4 (les tests 5 à 9 et l'interface événementielle de la v1.2 sont conservés).
 
@@ -47,6 +47,17 @@ budget_nourriture = max(0, revenu - self.panier.logement - self.panier.eau - imp
 
 - **Source unique du revenu :** `revenu` est lu depuis la **même source canonique** que celle utilisée pour le calcul de `p` (`SalaireReelEtGriefs` dans `src/salary.rs`). Aucun second calcul du revenu ne doit exister. Le salaire n'entre jamais directement dans `G`.
 - **Cohérence du panier utilisé pour `p` :** le coût du panier par personne utilisé pour calculer `p` contient la ration au prix affiché `P` (`100` au prix de base, jamais l'ancien `×10 = 1 000`) et exactement les mêmes `loyer (110)`, `eau (20)` et `impôt (10 % du revenu)` que `budget_nourriture`, soit `cout_panier(c, P) = P + 110 + 20 + impot(c)`.
+- **Redéfinition de `p` (Lot G.2 — taux d'effort au-delà de `e0 = 600`) :** en millièmes entiers sur `[0, 1000]`, arrondi par troncature entière vers zéro déclaré :
+
+```text
+si cout_panier == 0 -> p = 0
+si revenu == 0      -> p = 1000
+sinon :
+  effort = (cout_panier * 1000) / revenu                 (troncature entière)
+  p      = clamp(((effort - 600) * 1000) / 400, 0, 1000) (troncature entière, 0 si effort <= 600)
+```
+
+  Valeurs de contrôle au jour 0 (`P = 100`) pour les 5 cohortes : **`[802, 545, 187, 0, 0]`**.
 - **Impôt :** l'impôt forfaitaire de `10 %` utilise exclusivement le mécanisme forfaitaire existant de P1 (`src/tax.rs`, `TAX_RATE = 100` millièmes, §6.16 et §17.4 de `Docs/spec P1 - quartier vivant.md`) et `PanierComposante::Fiscalite` — aucun nouveau mécanisme fiscal n'est créé.
 - **Neutralité I1 :** aucune écriture dans `Cohort.total_money` (pas d'épargne ni de crédit dans cette tranche) ; les tests de l'invariant I1 restent intacts.
 - **Note `meal.rs` :** la constante `let budget = 10000;` dans `MealManager::resolve_all_meals` (`jeu/src/meal.rs:330`) ne se trouve pas sur le chemin alimentaire de `quartier_10ans.rs` et reste donc inchangée.
@@ -57,8 +68,10 @@ budget_nourriture = max(0, revenu - self.panier.logement - self.panier.eau - imp
 - **Paramètres entiers verrouillés (Lot A.2 & B.3) :**
   - Stock initial à `t = 0` : `2 000` rations ; pipeline d'importation (`GoodType::Food`, délai `3` jours) pré-amorcé à `t = 0` avec `500` rations livrées aux jours `0, 1, 2`.
   - Chaque matin après livraison des imports du jour, le stock du marché alimentaire est plafonné à la capacité maximale de `5` jours (`2 500` rations = `5 × 500`).
-  - `Market::auto_reprice()` est appelé une fois par jour avant les achats avec `stock_thresholds = (2_500, 2_499)`, `price_bounds = (100, 600)` (`P_base = 100`, plafond `6 × P_base = 600`, valeur à calibrer — révisé de ×3 à ×6 au Lot F) et `price_step = 10` centimes/jour (`+10`/j sous 5 j de couverture, soit 50 j pour atteindre ×6 ; `-10`/j au retour à `2 500` rations).
-  - Conséquence déterministe : en nominal (`stock = 2 500` avant achats), `P` reste fixe à `100` ; sous `5` jours de couverture (`stock < 2 500`), `P` monte progressivement de `+10`/j jusqu'à `600` ; dès reconstitution du stock à `2 500` (via baisse des achats ou retour d'imports), `P` redescend de `-10`/j jusqu'à `100` (`> high_threshold = 2_499`). `P` reste toujours strictement positif et fini.
+  - Reprice appelé une fois par jour avant les achats avec seuils de couverture de `5` jours (`2 500` rations) et bornes `price_bounds = (100, 600)` (`P_base = 100`, plafond conservé à `6 × P_base = 600` comme borne de sûreté, valeur à calibrer).
+  - **Règle de révision du prix (Lot G.1) :**
+    - Sous `5` jours de couverture (`stock < 2 500` avant achats) : **montée multiplicative `+25 %/jour`** (donnée à calibrer), arrondi déclaré par **troncature entière** vers zéro : `P_suiv = min(600, (P * 125) / 100)` (`9` hausses de `100` à `600` : `100 → 125 → 156 → 195 → 243 → 303 → 378 → 472 → 590 → 600`).
+    - À stock plein (`stock >= 2 500`) : descente linéaire inchangée de `-10` centimes/jour jusqu'à `100` (`max(100, P - 10)`). `P` reste toujours strictement positif et fini.
 
 ### B.4 Achat partiel et rationnement (Mode A)
 
@@ -86,7 +99,7 @@ rations_payables(c) = min(besoin(c), budget_nourriture(c) / P)   (division enti�
 - **Données réalistes validées le 17/11/2026 (figées, ne jamais modifier après exécution) — voir Annexe ci-dessous :**
   - Prix de base `P_base = 100` (plafond relevé à `600` = `×6` au Lot F, valeur à calibrer), charges fixes par personne/jour : `loyer = 110` (fixe même quand le logement s'use), `eau = 20`, `impôt = 10%` du revenu brut journalier (troncature entière, mécanisme forfaitaire P1).
   - Salaires horaires : `[35, 40, 50, 60, 70]` sur `8 h/j` → revenus moyens par habitant `[280, 320, 400, 480, 560]` (enfants et inactifs compris), impôts `[28, 32, 40, 48, 56]`, `budget_nourriture`/pers. `[122, 158, 230, 302, 374]`.
-  - Ratio `budget_nourriture / P_base` sans choc : **`[1,22 ; 1,58 ; 2,30 ; 3,02 ; 3,74]`** (coût du panier au jour 0 : `[258, 262, 270, 278, 286]`, donc `p = 0` au jour 0 pour toutes les cohortes). Totaux par cohorte agrégés selon les tailles `[60, 80, 100, 120, 140]`.
+  - Ratio `budget_nourriture / P_base` sans choc : **`[1,22 ; 1,58 ; 2,30 ; 3,02 ; 3,74]`** (coût du panier au jour 0 : `[258, 262, 270, 278, 286]`, donc `p = [802, 545, 187, 0, 0]` au jour 0 selon la redéfinition G.2). Totaux par cohorte agrégés selon les tailles `[60, 80, 100, 120, 140]`.
 
 ### Tests de fermeture du Lot B
 
@@ -179,9 +192,11 @@ Pour chacun des 4 scénarios ci-dessous, produire le tableau complet de la spec 
 - **Horloge travail et population :** `8 h/j` ; tailles de cohortes `[60, 80, 100, 120, 140]` (total `500` habitants).
 - **Salaires horaires :** `[35, 40, 50, 60, 70]` (soit revenus journaliers par habitant `[280, 320, 400, 480, 560]`).
 - **Nature du revenu :** « revenu par personne » = **revenu moyen PAR HABITANT** (enfants et inactifs compris), pas par travailleur.
-- **Prix et charges par habitant/jour :** prix de base de la ration `P_base = 100` (plafond relevé au Lot F de `×3` à `×6` = `600`, valeur à calibrer, pas `+10`/j sous 5 j de stock) ; `loyer = 110` (fixe même quand le logement s'use — choix de scénario assumé) ; `eau = 20` ; `impôt = 10 %` du revenu (`tax::TAX_RATE = 100` millièmes, mécanisme forfaitaire P1 existant §6.16 / §17.4).
-- **Motif de relèvement du plafond de prix (Lot F, 17/11/2026) :** *à ×3, des cohortes capables de payer plus restent sous-servies ; le prix doit pouvoir atteindre l'équilibre du marché (environ ×5 en S1).*
-- **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + 110 + 20 + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - self.panier.logement - self.panier.eau - impot(c))`, tous deux branchés sur la même source de revenu et le même panier dans `SalaireReelEtGriefs`.
+- **Prix et charges par habitant/jour :** prix de base de la ration `P_base = 100` (borne de sûreté à `×6` = `600`, valeur à calibrer ; montée multiplicative `+25 %/j` sous 5 j de stock par troncature entière `floor(P * 125 / 100)`, descente `-10`/j à stock plein `2 500`) ; `loyer = 110` (fixe même quand le logement s'use — choix de scénario assumé) ; `eau = 20` ; `impôt = 10 %` du revenu (`tax::TAX_RATE = 100` millièmes, mécanisme forfaitaire P1 existant §6.16 / §17.4).
+- **Motif du plafond de sûreté `×6` (Lot G.0, 17/11/2026 — remplace l'ancien motif du Lot F / `eb56c45`) :** *le prix d'une pénurie durable trouve son équilibre vers ×3,9 (S4) ; un plafond ×3 aurait coupé cet équilibre ; ×6 est une borne de sûreté, valeur à calibrer.*
+- **Motif de la montée multiplicative `+25 %/jour` (Lot G.1, 17/11/2026) :** *un marché en pénurie ajuste ses prix en jours ; le pas de +10/jour retardait l'éviction des cohortes les plus pauvres.*
+- **Redéfinition de `p` (Lot G.2, 17/11/2026) :** `effort = floor(cout_panier × 1000 ÷ revenu)` (`revenu 0 → p = 1000`), `p = clamp(floor((effort − 600) × 1000 ÷ 400), 0, 1000)` avec **`e0 = 600`** ; valeurs de contrôle au jour 0 `[802, 545, 187, 0, 0]` ; motif : *une famille qui dépense presque tout son revenu pour survivre est de plus en plus tendue, même sans choc.*
+- **Cohérence `p` / `budget_nourriture` :** `cout_panier(c, P) = P + self.panier.logement + self.panier.eau + impot(c)` (ration au prix `P = 100` au jour 0, pas `1 000`) et `budget_nourriture(c) = max(0, revenu(c) - self.panier.logement - self.panier.eau - impot(c))`, tous deux branchés sur la même source de revenu et le même panier dans `SalaireReelEtGriefs`.
 
 ## Points ouverts, non traités (à reporter dans le rapport final)
 
