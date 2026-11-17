@@ -9,8 +9,8 @@ use vestiges_horizons::{
     health::{CareType, DispensaryPatient, DispensaryQueue},
     household::{FoodQuality, Household, HousingQuality},
     inputs::{
-        calculate_p, calculate_q, calculate_q_from_components, calculate_u, ServiceComponent,
-        Q_WEIGHTS,
+        calculate_p, calculate_q, calculate_q_from_components, calculate_u,
+        calculate_u_after_meal, ServiceComponent, Q_WEIGHTS,
     },
     salary::SalaireReelEtGriefs,
 };
@@ -47,16 +47,19 @@ fn test_u_exact_7_over_19() {
 
 #[test]
 fn test_u_from_household_exact_7_over_19() {
-    // Cas avec Household : besoin = 19, stock = 12
-    // non_servis = 19 - 12 = 7
     let mut household = Household::new(
         EntityId::new(vestiges_horizons::entities::EntityType::Household, 1),
         EntityId::new(vestiges_horizons::entities::EntityType::Cohort, 1),
         HousingQuality::Base,
     );
-    household.add_food(FoodQuality::Base, 12);
+    for member in 0..18 {
+        household.add_member(EntityId::new(
+            vestiges_horizons::entities::EntityType::NamedIndividual,
+            member,
+        ));
+    }
 
-    let u = household.calculate_u(19);
+    let u = household.calculate_u(12);
     assert_eq!(
         u, 368,
         "Household::calculate_u doit retourner 368 pour 12 stock sur 19 besoin"
@@ -364,15 +367,23 @@ fn test_household_integration() {
         HousingQuality::Base,
     );
 
-    // Ajouter de la nourriture
-    household.add_food(FoodQuality::Base, 50);
+    household.add_food(FoodQuality::Base, 1);
+    let eaten = household.consume_food_rations(0);
+    assert_eq!(household.calculate_u(eaten), 0);
 
-    // Besoin = 100, stock = 50 → non_servis = 50
-    let u = household.calculate_u(100);
-    assert_eq!(
-        u, 500,
-        "Household::calculate_u doit retourner 500 pour 50/100"
+    let mut hungry_household = Household::new(
+        EntityId::new(vestiges_horizons::entities::EntityType::Household, 2),
+        EntityId::new(vestiges_horizons::entities::EntityType::Cohort, 2),
+        HousingQuality::Base,
     );
+    hungry_household.add_member(EntityId::new(
+        vestiges_horizons::entities::EntityType::NamedIndividual,
+        2,
+    ));
+    hungry_household.add_food(FoodQuality::Base, 1);
+    let eaten = hungry_household.consume_food_rations(0);
+    assert_eq!(hungry_household.calculate_u(eaten), 500);
+    assert_eq!(calculate_u_after_meal(1, 2), 500);
 }
 
 #[test]

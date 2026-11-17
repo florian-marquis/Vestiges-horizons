@@ -181,13 +181,13 @@ fn test_t7_4_integration_evenementielle() {
     manager.mettre_a_jour_entrees_griefs(entity_id, 1_000, 250, 0, Timestamp::new(0, 0)).unwrap();
     manager.entites.get_mut(&entity_id).unwrap()
         .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
-    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(95_000));
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(215_000));
 
     manager.mettre_a_jour_entree_griefs(entity_id, GriefEntree::U, 0, Timestamp::new(1, 2)).unwrap();
-    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(142_500));
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(322_500));
     manager.entites.get_mut(&entity_id).unwrap()
         .mettre_a_jour_griefs(Timestamp::new(2, 0)).unwrap();
-    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(145_000));
+    assert_eq!(manager.get_griefs_micro_points(entity_id), Some(340_000));
 }
 
 // ============================================================================
@@ -368,42 +368,42 @@ fn input_changed_events_are_ordered_by_slot_and_drive_t7_state() {
     let state = &manager.entites[&entity_id].griefs;
     assert_eq!(state.last_update(), Timestamp::new(0, 2));
     assert_eq!(state.u(), 0);
-    assert_eq!(state.griefs_micro_points(), 45_000);
+    assert_eq!(state.griefs_micro_points(), 105_000);
 }
 
 #[test]
 fn test_t7_controlled_1_shortage_only_reaches_ceiling_u_eq_1() {
-    // u = 1 => 0.09 point/jour, cible 2-4 ans. Le seuil de saturation doit être entre 730 et 1460 jours.
+    // Avec u=1000 et q=0, la pente v7.8.2 est de 0,21 point/jour.
     let mut state = GriefsState::new(EntityId::new(EntityType::Cohort, 1));
     state.set_inputs_at(1_000, 0, 0, Timestamp::new(0, 0)).unwrap();
-    state.advance_to(Timestamp::new(730, 0)).unwrap();
-    assert!(state.griefs_points() > 0 && state.griefs_points() < 100, "seuil de saturation hors borne basse");
-    state.advance_to(Timestamp::new(1_460, 0)).unwrap();
-    assert!(state.g_qmicro() >= 400_000_000, "la saturation doit être atteinte avant 1 460 jours");
+    state.advance_to(Timestamp::new(476, 0)).unwrap();
+    assert_eq!(state.g_qmicro(), 399_840_000);
+    state.advance_to(Timestamp::new(477, 0)).unwrap();
+    assert_eq!(state.g_qmicro(), 400_000_000);
 }
 
 #[test]
-fn test_t7_controlled_2_partial_shortage_u_eq_0_3_falls_in_8_to_12_years() {
-    // u = 0.3 => 0.027 point/jour, cible 8-12 ans. Le seuil de saturation doit être entre 2 920 et 4 380 jours.
+fn test_t7_controlled_2_partial_shortage_u_eq_0_3_reaches_ceiling_on_day_1852() {
+    // Avec q=500, u=300 donne une pente de 0,054 point/jour.
     let mut state = GriefsState::new(EntityId::new(EntityType::Cohort, 2));
-    state.set_inputs_at(300, 0, 0, Timestamp::new(0, 0)).unwrap();
-    state.advance_to(Timestamp::new(2_920, 0)).unwrap();
-    assert!(state.griefs_points() > 0 && state.griefs_points() < 100, "seuil de saturation hors borne basse");
-    state.advance_to(Timestamp::new(4_380, 0)).unwrap();
-    assert!(state.g_qmicro() >= 400_000_000, "la saturation de u=0.3 doit se produire dans la fenêtre attendue");
+    state.set_inputs_at(300, 0, 500, Timestamp::new(0, 0)).unwrap();
+    state.advance_to(Timestamp::new(1_851, 0)).unwrap();
+    assert_eq!(state.g_qmicro(), 399_816_000);
+    state.advance_to(Timestamp::new(1_852, 0)).unwrap();
+    assert_eq!(state.g_qmicro(), 400_000_000);
 }
 
 #[test]
 fn test_t7_controlled_3_partial_shortage_with_quality_no_saturation_gives_final_g_and_slope() {
-    // u = 0.3 et q = 0.8 => pente positive faible, sans saturation. G final après 10 ans doit rester bien sous 100.
+    // u = 0.3 et q = 1.0 donnent une pente positive faible, sans saturation en dix ans.
     let mut state = GriefsState::new(EntityId::new(EntityType::Cohort, 3));
-    state.set_inputs_at(300, 0, 800, Timestamp::new(0, 0)).unwrap();
-    let slope = 90 * 300 + 20 * 0 - 30 * 800;
-    assert_eq!(slope, 3_000, "la pente micro doit être de +3 000 qmicro/slot");
+    state.set_inputs_at(300, 0, 1_000, Timestamp::new(0, 0)).unwrap();
+    let slope = 180 * 300 + 20 * 0 + 60 * (500 - 1_000);
+    assert_eq!(slope, 24_000, "la pente doit être de 24 000 µpt/j");
 
     state.advance_to(Timestamp::new(3_650, 0)).unwrap();
-    assert!(state.griefs_points() >= 9 && state.griefs_points() <= 20, "G final en 10 ans doit rester faible, sans saturation");
-    assert!(state.g_qmicro() < 400_000_000, "u=0.3/q=0.8 ne doit pas saturer sur 10 ans");
+    assert_eq!(state.griefs_micro_points(), 87_600_000);
+    assert!(state.g_qmicro() < 400_000_000, "u=0.3/q=1.0 ne doit pas saturer sur 10 ans");
 }
 
 #[test]

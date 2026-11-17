@@ -85,7 +85,7 @@ impl GriefsState {
     }
 
     pub fn slope_micro_points_per_day(&self) -> i64 {
-        90 * i64::from(self.u) + 20 * i64::from(self.p) - 30 * i64::from(self.q)
+        180 * i64::from(self.u) + 20 * i64::from(self.p) + 60 * (500 - i64::from(self.q))
     }
 
     pub fn entity_id(&self) -> EntityId {
@@ -208,83 +208,120 @@ mod tests {
         EntityId::new(EntityType::Cohort, 1)
     }
 
-    #[test]
-    fn total_shortage_reaches_calibrated_ceiling() {
-        let mut state = GriefsState::new(entity());
-        state
-            .set_inputs_at(1_000, 0, 0, Timestamp::new(0, 0))
-            .unwrap();
-        assert_eq!(state.slope_micro_points_per_day(), 90_000);
+    fn set_inputs(state: &mut GriefsState, u: u16, p: u16, q: u16) {
+        state.set_inputs_at(u, p, q, Timestamp::new(0, 0)).unwrap();
+    }
 
-        state.advance_to(Timestamp::new(1_111, 0)).unwrap();
+    #[test]
+    fn revised_slope_conversion_is_exact() {
+        let cases = [
+            ((1_000, 0, 0), 210_000),
+            ((0, 0, 500), 0),
+            ((0, 0, 0), 30_000),
+            ((0, 0, 1_000), -30_000),
+            ((1_000, 1_000, 0), 230_000),
+        ];
+        for ((u, p, q), expected) in cases {
+            let mut state = GriefsState::new(entity());
+            set_inputs(&mut state, u, p, q);
+            assert_eq!(state.slope_micro_points_per_day(), expected);
+        }
+    }
+
+    #[test]
+    fn total_shortage_without_services_reaches_ceiling_on_day_477() {
+        let mut state = GriefsState::new(entity());
+        set_inputs(&mut state, 1_000, 0, 0);
+        state.advance_to(Timestamp::new(476, 0)).unwrap();
+        assert_eq!(state.griefs_micro_points(), 99_960_000);
+        assert_eq!(state.g_qmicro(), 399_840_000);
+        state.advance_to(Timestamp::new(477, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), MAX_GRIEFS_QMICRO);
+    }
+
+    #[test]
+    fn total_shortage_with_neutral_services_reaches_ceiling_on_day_556() {
+        let mut state = GriefsState::new(entity());
+        set_inputs(&mut state, 1_000, 0, 500);
+        state.advance_to(Timestamp::new(555, 0)).unwrap();
+        assert_eq!(state.griefs_micro_points(), 99_900_000);
+        assert_eq!(state.g_qmicro(), 399_600_000);
+        state.advance_to(Timestamp::new(556, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), MAX_GRIEFS_QMICRO);
+    }
+
+    #[test]
+    fn partial_shortage_reaches_ceiling_on_day_1852() {
+        let mut state = GriefsState::new(entity());
+        set_inputs(&mut state, 300, 0, 500);
+        state.advance_to(Timestamp::new(1_851, 0)).unwrap();
+        assert_eq!(state.griefs_micro_points(), 99_954_000);
+        assert_eq!(state.g_qmicro(), 399_816_000);
+        state.advance_to(Timestamp::new(1_852, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), MAX_GRIEFS_QMICRO);
+    }
+
+    #[test]
+    fn no_hunger_and_zero_services_reach_ceiling_on_day_3334() {
+        let mut state = GriefsState::new(entity());
+        set_inputs(&mut state, 0, 0, 0);
+        state.advance_to(Timestamp::new(3_333, 0)).unwrap();
         assert_eq!(state.griefs_micro_points(), 99_990_000);
-        state.advance_to(Timestamp::new(1_112, 0)).unwrap();
-        assert_eq!(state.g_qmicro, MAX_GRIEFS_QMICRO);
+        assert_eq!(state.g_qmicro(), 399_960_000);
+        state.advance_to(Timestamp::new(3_334, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), MAX_GRIEFS_QMICRO);
     }
 
     #[test]
-    fn partial_shortage_reaches_ceiling_on_calibrated_horizon() {
+    fn neutral_inputs_keep_griefs_constant_for_ten_years() {
         let mut state = GriefsState::new(entity());
-        state
-            .set_inputs_at(300, 0, 0, Timestamp::new(0, 0))
-            .unwrap();
-        state.advance_to(Timestamp::new(3_703, 0)).unwrap();
-        assert_eq!(state.griefs_micro_points(), 99_981_000);
-        state.advance_to(Timestamp::new(3_704, 0)).unwrap();
-        assert_eq!(state.g_qmicro, MAX_GRIEFS_QMICRO);
+        state.g_qmicro = 123_456_789;
+        set_inputs(&mut state, 0, 0, 500);
+        state.advance_to(Timestamp::new(3_650, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), 123_456_789);
     }
 
     #[test]
-    fn full_quality_reaches_zero_on_calibrated_horizon() {
+    fn full_services_reduce_griefs_to_zero_on_day_3334() {
         let mut state = GriefsState::new(entity());
-        state
-            .set_inputs_at(1_000, 0, 0, Timestamp::new(0, 0))
-            .unwrap();
-        state.advance_to(Timestamp::new(1_112, 0)).unwrap();
-        state
-            .set_inputs_at(0, 0, 1_000, Timestamp::new(1_112, 0))
-            .unwrap();
-        state.advance_to(Timestamp::new(4_445, 0)).unwrap();
+        state.g_qmicro = MAX_GRIEFS_QMICRO;
+        set_inputs(&mut state, 0, 0, 1_000);
+        state.advance_to(Timestamp::new(3_333, 0)).unwrap();
         assert_eq!(state.griefs_micro_points(), 10_000);
-        state.advance_to(Timestamp::new(4_446, 0)).unwrap();
-        assert_eq!(state.g_qmicro, 0);
+        assert_eq!(state.g_qmicro(), 40_000);
+        state.advance_to(Timestamp::new(3_334, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), 0);
     }
 
     #[test]
-    fn split_slot_advancement_matches_one_day_advance() {
+    fn ninety_day_shock_retreats_to_zero_after_540_recovery_days() {
+        let mut state = GriefsState::new(entity());
+        set_inputs(&mut state, 1_000, 0, 500);
+        state.advance_to(Timestamp::new(90, 0)).unwrap();
+        assert_eq!(state.griefs_micro_points(), 16_200_000);
+        assert_eq!(state.g_qmicro(), 64_800_000);
+        state
+            .set_inputs_at(0, 0, 1_000, Timestamp::new(90, 0))
+            .unwrap();
+        state.advance_to(Timestamp::new(629, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), 120_000);
+        state.advance_to(Timestamp::new(630, 0)).unwrap();
+        assert_eq!(state.g_qmicro(), 0);
+    }
+
+    #[test]
+    fn four_quarter_slots_match_one_day() {
         let mut split = GriefsState::new(entity());
         let mut direct = GriefsState::new(entity());
-        split
-            .set_inputs_at(1_000, 250, 0, Timestamp::new(0, 0))
-            .unwrap();
-        direct
-            .set_inputs_at(1_000, 250, 0, Timestamp::new(0, 0))
-            .unwrap();
-
+        set_inputs(&mut split, 1_000, 250, 0);
+        set_inputs(&mut direct, 1_000, 250, 0);
         for seq in 1..=3 {
             split.advance_to(Timestamp::new(0, seq)).unwrap();
         }
         split.advance_to(Timestamp::new(1, 0)).unwrap();
         direct.advance_to(Timestamp::new(1, 0)).unwrap();
-
-        assert_eq!(split.g_qmicro, direct.g_qmicro);
-        assert_eq!(split.g_qmicro, 380_000);
-    }
-
-    #[test]
-    fn input_changes_integrate_the_previous_slope_first() {
-        let mut state = GriefsState::new(entity());
-        state
-            .set_inputs_at(1_000, 0, 0, Timestamp::new(0, 0))
-            .unwrap();
-        state
-            .set_input_at(GriefEntree::P, 1_000, Timestamp::new(10, 2))
-            .unwrap();
-        assert_eq!(state.griefs_micro_points(), 945_000);
-
-        state.advance_to(Timestamp::new(11, 0)).unwrap();
-        assert_eq!(state.griefs_micro_points(), 1_000_000);
-        assert_eq!(state.epoch, 2);
+        assert_eq!(split.g_qmicro(), direct.g_qmicro());
+        assert_eq!(split.g_qmicro(), 860_000);
     }
 
     #[test]
@@ -304,7 +341,8 @@ mod tests {
             state.set_inputs_at(u, p, q, timestamp).unwrap();
             let target_slot = i128::from(timestamp.day) * 4 + i128::from(timestamp.seq);
             while oracle_slot < target_slot {
-                let slope = 90 * oracle_inputs.0 + 20 * oracle_inputs.1 - 30 * oracle_inputs.2;
+                let slope =
+                    180 * oracle_inputs.0 + 20 * oracle_inputs.1 + 60 * (500 - oracle_inputs.2);
                 oracle_g = (oracle_g + i128::from(slope)).clamp(0, 400_000_000);
                 oracle_slot += 1;
             }
@@ -314,7 +352,7 @@ mod tests {
         state.advance_to(target).unwrap();
         let target_slot = i128::from(target.day) * 4 + i128::from(target.seq);
         while oracle_slot < target_slot {
-            let slope = 90 * oracle_inputs.0 + 20 * oracle_inputs.1 - 30 * oracle_inputs.2;
+            let slope = 180 * oracle_inputs.0 + 20 * oracle_inputs.1 + 60 * (500 - oracle_inputs.2);
             oracle_g = (oracle_g + i128::from(slope)).clamp(0, 400_000_000);
             oracle_slot += 1;
         }
@@ -324,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_inputs_slots_and_backwards_time_are_rejected() {
+    fn input_bounds_timestamp_bounds_and_order_are_enforced() {
         let mut state = GriefsState::new(entity());
         assert!(matches!(
             state.set_input_at(GriefEntree::U, 1_001, Timestamp::new(0, 0)),
@@ -334,14 +372,12 @@ mod tests {
             state.advance_to(Timestamp::new(0, 4)),
             Err(GriefsError::SlotOutOfRange { .. })
         ));
-        state
-            .set_inputs_at(1_000, 0, 0, Timestamp::new(0, 0))
-            .unwrap();
+        set_inputs(&mut state, 1_000, 0, 0);
         state.advance_to(Timestamp::new(10, 0)).unwrap();
         assert!(matches!(
             state.advance_to(Timestamp::new(9, 3)),
             Err(GriefsError::TimeWentBackwards { .. })
         ));
-        assert!(state.g_qmicro <= MAX_GRIEFS_QMICRO);
+        assert!(state.g_qmicro() <= MAX_GRIEFS_QMICRO);
     }
 }

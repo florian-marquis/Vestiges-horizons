@@ -72,20 +72,10 @@ pub fn calculate_u(non_servis: u32, demande: u32) -> u16 {
     result.min(1000)
 }
 
-/// Calcule u depuis le stock de nourriture d'un foyer et le besoin
-///
-/// @param total_food_stock Stock total de nourriture (toutes qualités confondues)
-/// @param besoin_total Besoin total en nourriture pour le foyer
-/// @returns u en millièmes [0, 1000]
-pub fn calculate_u_from_household(total_food_stock: u32, besoin_total: u32) -> u16 {
-    // Si le stock couvre le besoin, u = 0
-    if total_food_stock >= besoin_total {
-        calculate_u(0, besoin_total)
-    } else {
-        // non_servis = besoin_total - total_food_stock
-        let non_servis = besoin_total.saturating_sub(total_food_stock);
-        calculate_u(non_servis, besoin_total)
-    }
+/// Calcule u après le repas, depuis les rations réellement consommées.
+pub fn calculate_u_after_meal(rations_mangees: u32, besoin_total: u32) -> u16 {
+    let non_servis = besoin_total.saturating_sub(rations_mangees);
+    calculate_u(non_servis, besoin_total)
 }
 
 // ============================================================================
@@ -405,18 +395,11 @@ mod tests {
         }
 
         #[test]
-        fn test_u_from_household_coverage_positive() {
-            // Stock >= besoin => u = 0
-            assert_eq!(calculate_u_from_household(100, 100), 0);
-            assert_eq!(calculate_u_from_household(150, 100), 0);
-        }
-
-        #[test]
-        fn test_u_from_household_shortage() {
-            // Stock < besoin => u > 0
-            // besoin = 100, stock = 80, non_servis = 20
-            // u = (20 * 1000) / 100 = 200
-            assert_eq!(calculate_u_from_household(80, 100), 200);
+        fn test_u_after_meal_uses_rations_actually_eaten() {
+            assert_eq!(calculate_u_after_meal(100, 100), 0);
+            assert_eq!(calculate_u_after_meal(80, 100), 200);
+            assert_eq!(calculate_u_after_meal(0, 100), 1_000);
+            assert_eq!(calculate_u_after_meal(50, 0), 0);
         }
     }
 

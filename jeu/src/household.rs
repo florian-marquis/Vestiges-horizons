@@ -171,43 +171,31 @@ impl Household {
     /// §15.2 : "concrétisation de l'un des besoins financiers : la nourriture.
     /// On stocke de la nourriture, de deux qualités"
     pub fn consume_food(&mut self, day: i64) -> bool {
-        // Vérifier qu'on a assez de nourriture
-        let total_food: u32 = self.food_stock.values().sum();
-        
-        if total_food < self.member_count() as u32 {
-            // Pas assez de nourriture
-            self.last_consumption_day = day;
-            return false;
-        }
-        
-        // Consommer la nourriture (priorité à la qualité supérieure)
-        let mut remaining = self.member_count() as u32;
-        
-        // Commencer par la meilleure qualité
-        if let Some(superieur) = self.food_stock.get_mut(&FoodQuality::Superieure) {
-            let to_consume = remaining.min(*superieur);
-            *superieur -= to_consume;
-            remaining -= to_consume;
-        }
-        
-        if remaining > 0 {
-            if let Some(moyenne) = self.food_stock.get_mut(&FoodQuality::Moyenne) {
-                let to_consume = remaining.min(*moyenne);
-                *moyenne -= to_consume;
+        self.consume_food_rations(day) == self.member_count() as u32
+    }
+
+    /// Consomme le stock réellement disponible, partagé sans priorité entre les membres.
+    pub fn consume_food_rations(&mut self, day: i64) -> u32 {
+        let mut remaining = (self.member_count() as u32).min(self.total_food());
+        let consumed = remaining;
+
+        for quality in [
+            FoodQuality::Superieure,
+            FoodQuality::Moyenne,
+            FoodQuality::Base,
+        ] {
+            if remaining == 0 {
+                break;
+            }
+            if let Some(stock) = self.food_stock.get_mut(&quality) {
+                let to_consume = remaining.min(*stock);
+                *stock -= to_consume;
                 remaining -= to_consume;
             }
         }
-        
-        if remaining > 0 {
-            if let Some(base) = self.food_stock.get_mut(&FoodQuality::Base) {
-                let to_consume = remaining.min(*base);
-                *base -= to_consume;
-                remaining -= to_consume;
-            }
-        }
-        
+
         self.last_consumption_day = day;
-        remaining == 0
+        consumed
     }
     
     /// Ajoute de la nourriture au stock
@@ -265,16 +253,9 @@ impl Household {
             .collect()
     }
 
-    /// Calcule u (besoins alimentaires non servis / demande) pour ce foyer
-    ///
-    /// Formule (spec T7-T8 A2 §3) :
-    /// - u = 0 si stock > 0 ou demande == 0
-    /// - u = ((non_servis * 1000) / demande).min(1000) sinon (troncature entière)
-    ///
-    /// @param besoin_total Besoin total en nourriture pour le foyer
-    /// @returns u en millièmes [0, 1000]
-    pub fn calculate_u(&self, besoin_total: u32) -> u16 {
-        crate::inputs::calculate_u_from_household(self.total_food(), besoin_total)
+    /// Calcule u depuis les rations réellement consommées aujourd'hui.
+    pub fn calculate_u(&self, rations_mangees: u32) -> u16 {
+        crate::inputs::calculate_u_after_meal(rations_mangees, self.member_count() as u32)
     }
 }
 
@@ -602,6 +583,23 @@ mod tests {
         
         // Maintenant il n'y a plus assez de nourriture (1 < 2)
         assert!(!household.consume_food(2));
+    }
+
+    #[test]
+    fn partial_food_is_consumed_instead_of_carried_as_unconsumed_stock() {
+        let owner_id = EntityId::new(EntityType::NamedIndividual, 10);
+        let member_id = EntityId::new(EntityType::NamedIndividual, 11);
+        let mut household = Household::new(
+            EntityId::new(EntityType::Household, 10),
+            owner_id,
+            HousingQuality::Base,
+        );
+        household.add_member(member_id);
+        household.add_food(FoodQuality::Base, 1);
+
+        assert_eq!(household.consume_food_rations(4), 1);
+        assert_eq!(household.total_food(), 0);
+        assert_eq!(household.last_consumption_day, 4);
     }
     
     #[test]

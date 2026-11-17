@@ -14,6 +14,9 @@ use crate::entities::EntityId;
 use crate::{Event, EventData, Timestamp, EVENT_TYPE_INPUT_CHANGED};
 pub use crate::griefs::{GriefEntree, GriefsError, GriefsState};
 
+const FOOD_BUDGET_RENT: u64 = 110;
+const FOOD_BUDGET_WATER: u64 = 20;
+
 /// Composantes du panier
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Panier {
@@ -71,6 +74,8 @@ pub struct SalaireReelEtGriefs {
     pub heures_travaillees: u32,
     /// Coût du panier
     pub cout_panier: u64,
+    /// Composantes du panier propres à cette cohorte
+    pub panier: Panier,
     /// Salaire réel (salaire × heures / coût panier)
     /// Exprimé en pourcentage : (salaire_horaire * heures / cout_panier) * 100
     pub salaire_reel: u64,
@@ -90,6 +95,7 @@ impl SalaireReelEtGriefs {
             salaire_horaire: 0,
             heures_travaillees: 0,
             cout_panier: 0,
+            panier: Panier::new(),
             salaire_reel: 0,
             griefs: GriefsState::new(entite),
             taux_risque: 0,
@@ -112,6 +118,22 @@ impl SalaireReelEtGriefs {
         let numerator = self.salaire_horaire * self.heures_travaillees as u64 * 100;
         self.salaire_reel = numerator / self.cout_panier;
     }
+
+    pub fn revenu_journalier(&self) -> u64 {
+        self.salaire_horaire
+            .saturating_mul(u64::from(self.heures_travaillees))
+    }
+
+    pub fn impot_journalier(&self) -> u64 {
+        let numerator =
+            u128::from(self.revenu_journalier()) * u128::from(crate::tax::TAX_RATE);
+        (numerator / 1_000) as u64
+    }
+
+    pub fn budget_nourriture(&self, _jour: i64) -> u64 {
+        self.revenu_journalier()
+            .saturating_sub(FOOD_BUDGET_RENT + FOOD_BUDGET_WATER + self.impot_journalier())
+    }
     
     /// Calcule p (pression des prix) pour cette entité
     ///
@@ -123,7 +145,7 @@ impl SalaireReelEtGriefs {
     /// @param revenu_disponible Revenu disponible en centimes (par défaut : salaire_horaire * heures_travaillees)
     /// @returns p en millièmes [0, 1000]
     pub fn calculate_p(&self, revenu_disponible: Option<u64>) -> u16 {
-        let rev = revenu_disponible.unwrap_or(self.salaire_horaire * self.heures_travaillees as u64);
+        let rev = revenu_disponible.unwrap_or_else(|| self.revenu_journalier());
         crate::inputs::calculate_p(self.cout_panier, rev)
     }
 
@@ -215,7 +237,10 @@ impl SalaireReelEtGriefsManager {
     
     /// Ajoute une entité
     pub fn ajouter_entite(&mut self, entite: EntityId) -> EntityId {
-        self.entites.insert(entite, SalaireReelEtGriefs::new(entite));
+        let mut state = SalaireReelEtGriefs::new(entite);
+        state.panier = self.panier.clone();
+        state.cout_panier = state.panier.cout_total();
+        self.entites.insert(entite, state);
         entite
     }
     
@@ -238,11 +263,27 @@ impl SalaireReelEtGriefsManager {
     /// Met à jour le panier
     pub fn mettre_a_jour_panier(&mut self, composante: PanierComposante, valeur: u64) {
         self.panier.set_composante(composante, valeur);
-        // Recalculer tous les salaires réels
         for e in self.entites.values_mut() {
-            e.cout_panier = self.panier.cout_total();
+            e.panier.set_composante(composante, valeur);
+            e.cout_panier = e.panier.cout_total();
             e.calculer_salaire_reel();
         }
+    }
+
+    pub fn mettre_a_jour_panier_entite(
+        &mut self,
+        entite: EntityId,
+        composante: PanierComposante,
+        valeur: u64,
+    ) -> Result<(), GriefsError> {
+        let state = self
+            .entites
+            .get_mut(&entite)
+            .ok_or(GriefsError::UnknownEntity(entite))?;
+        state.panier.set_composante(composante, valeur);
+        state.cout_panier = state.panier.cout_total();
+        state.calculer_salaire_reel();
+        Ok(())
     }
     
     /// Met à jour une entrée de griefs pour une entité
@@ -348,6 +389,60 @@ mod tests {
         // salaire_reel = (1000 * 8 * 100) / 2000 = 400%
         assert_eq!(sr.salaire_reel, 400);
     }
+
+    #[test]
+    fn food_budget_and_price_pressure_share_per_cohort_income() {
+        let mut manager = SalaireReelEtGriefsManager::new();
+        let cohorts = [
+            (35, 280, 28, 122),
+            (40, 320, 32, 158),
+            (50, 400, 40, 230),
+            (60, 480, 48, 302),
+            (70, 560, 56, 374),
+        ];
+
+        for (index, (hourly_wage, income, tax, food_budget)) in cohorts.into_iter().enumerate() {
+            let entity = EntityId::new(crate::entities::EntityType::Cohort, index as u64 + 1);
+            manager.ajouter_entite(entity);
+            manager.mettre_a_jour_salaire_horaire(entity, hourly_wage);
+            manager.mettre_a_jour_heures(entity, 8);
+            manager
+                .mettre_a_jour_panier_entite(entity, PanierComposante::Nourriture, 100)
+                .unwrap();
+            manager
+                .mettre_a_jour_panier_entite(entity, PanierComposante::Logement, 110)
+                .unwrap();
+            manager
+                .mettre_a_jour_panier_entite(entity, PanierComposante::Eau, 20)
+                .unwrap();
+            manager
+                .mettre_a_jour_panier_entite(entity, PanierComposante::Fiscalite, tax)
+                .unwrap();
+
+            let state = manager.entites.get(&entity).unwrap();
+            assert_eq!(state.revenu_journalier(), income);
+            assert_eq!(state.impot_journalier(), tax);
+            assert_eq!(state.budget_nourriture(0), food_budget);
+            assert_eq!(state.cout_panier, 100 + 110 + 20 + tax);
+            assert_eq!(state.calculate_p(None), 0);
+        }
+    }
+
+    #[test]
+    fn entity_specific_basket_updates_do_not_change_other_cohorts() {
+        let mut manager = SalaireReelEtGriefsManager::new();
+        let first = EntityId::new(crate::entities::EntityType::Cohort, 1);
+        let second = EntityId::new(crate::entities::EntityType::Cohort, 2);
+        manager.ajouter_entite(first);
+        manager.ajouter_entite(second);
+
+        manager
+            .mettre_a_jour_panier_entite(first, PanierComposante::Nourriture, 150)
+            .unwrap();
+
+        assert_eq!(manager.entites.get(&first).unwrap().cout_panier, 150);
+        assert_eq!(manager.entites.get(&second).unwrap().cout_panier, 0);
+    }
     
     /// §19.2 T7.1 : Concordance - I8 vert à tolérance zéro
     #[test]
@@ -417,7 +512,7 @@ mod tests {
         let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
         let mut sr = SalaireReelEtGriefs::new(entite);
         sr.mettre_a_jour_entrees(1_000, 0, 0, Timestamp::new(0, 0)).unwrap();
-        assert_eq!(sr.calculer_dg(), 90_000);
+        assert_eq!(sr.calculer_dg(), 210_000);
     }
     
     /// §19.2 T7.3 : Choc 11 complet - impôt ×2 pendant un an
@@ -482,14 +577,14 @@ mod tests {
         manager.mettre_a_jour_entrees_griefs(entite, 1_000, 250, 0, Timestamp::new(0, 0)).unwrap();
         manager.entites.get_mut(&entite).unwrap()
             .mettre_a_jour_griefs(Timestamp::new(1, 0)).unwrap();
-        assert_eq!(manager.get_griefs_micro_points(entite), Some(95_000));
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(215_000));
 
         manager.mettre_a_jour_entree_griefs(entite, GriefEntree::U, 0, Timestamp::new(1, 2)).unwrap();
-        assert_eq!(manager.get_griefs_micro_points(entite), Some(142_500));
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(322_500));
 
         manager.entites.get_mut(&entite).unwrap()
             .mettre_a_jour_griefs(Timestamp::new(2, 0)).unwrap();
-        assert_eq!(manager.get_griefs_micro_points(entite), Some(145_000));
+        assert_eq!(manager.get_griefs_micro_points(entite), Some(340_000));
     }
     
     /// §19.2 T7.5 : Seuil de risque (entrées)
