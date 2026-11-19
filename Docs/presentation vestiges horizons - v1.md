@@ -6,7 +6,7 @@ type: "text/markdown"
 
 # Vestige : Horizon — le jeu expliqué à tout le monde
 
-*Document d'accueil pour les personnes extérieures au projet. Aucun jargon sans explication. Dernière mise à jour : v7.7 du cadrage, novembre 2026.*
+*Document d'accueil pour les personnes extérieures au projet. Aucun jargon sans explication. Dernière mise à jour : cadrage v7.8, révision v7.8.1, novembre 2026.*
 
 ---
 
@@ -167,7 +167,7 @@ Le jeu n'a **pas d'histoire écrite d'avance**. Les « événements » (une séc
 | Émergent | Qui n'est pas écrit d'avance mais résulte de la simulation. |
 | Headless | Une version du jeu sans écran, qui tourne toute seule pour tester que la simulation tient. On « joue » avec des robots et on lit les résultats. |
 | Invariant | Une règle qui ne doit JAMAIS être violée (par exemple : rien n'apparaît de nulle part). Chaque test du jeu la vérifie. |
-| Cadrage | Le document maître du projet, qui fixe les règles de conception. Il a un numéro de version (actuellement v7.7). |
+| Cadrage | Le document maître du projet, qui fixe les règles de conception. La version active est v7.8, révision v7.8.1. |
 | P1, P1.5, P2… | Les étapes de construction du jeu : P1 = le quartier, P1.5 = ses enrichissements, P2 = le bassin (ville ou station), P3 = la planète, le système et l'empire. |
 
 ---
@@ -190,10 +190,11 @@ Elles expliquent la plupart des refus et des choix du projet :
 
 Le projet est documenté avant d'être programmé. Cinq documents circulent :
 
-- **Le cadrage** : les règles de conception et l'état des décisions (v7.7).
-- **La spécification du quartier (P1)** : le détail mécanique du premier palier, tranche par tranche.
+- **Le cadrage** : les règles de conception et l'état des décisions (v7.8, révision v7.8.1).
+- **Les spécifications actives** : P1, son immersion P1b et, pour le correctif en cours, T7-T8 v1.2.
 - **Deux documents de travail** (révoltes et factions ; économie spatiale) : les réflexions en cours, pas encore tranchées.
 - **Deux documents de suivi** : le registre de complétude (tout ce qui existe, avec son statut) et le suivi du projet (fait, en cours, à faire).
+- **Les archives** : les versions remplacées, conservées pour l'historique mais non normatives.
 - **Ce document** : la porte d'entrée.
 
 Pour apporter une critique ou une idée, les questions utiles sont toujours les mêmes :
@@ -211,8 +212,8 @@ Une idée qui passe ces cinq filtres a toute sa place. Une idée qui échoue sur
 ## 8. Où en est le projet
 
 - La conception du premier palier (le quartier) est **complète** : entités, mécanismes, scénarios de choc, tests et plan de construction en 11 tranches.
-- Les 66+ décisions de conception sont tranchées et datées (cadrage v7.7) ; les points restés ouverts sont listés explicitement dans le registre de complétude.
+- Les décisions de conception sont tranchées et datées dans le cadrage v7.8.1 ; les points restés ouverts sont listés explicitement dans le registre de complétude.
 - Les réflexions P2 et P3 avancent dans les documents de travail (révoltes et factions, économie spatiale) ; rien n'y est tranché avant validation.
-- La construction du jeu n'a pas commencé : la règle du projet est de tout documenter d'abord. La première pièce à coder, quand la décision sera prise, est la **tranche 1** (le noyau temporel : l'horloge du monde et la file des événements), dont la spécification et l'ordre de mission sont prêts.
+- Le développement a commencé : le noyau P1 est en cours d'implémentation. Le correctif T7-T8 v1.2 valide techniquement sa tranche A seulement ; la mesure du quartier et les validations des étapes suivantes restent à faire.
 
 *Ce document évolue avec le projet. S'il contredit le cadrage, le cadrage gagne — mais dites-le nous : c'est souvent le signe que le cadrage n'est pas assez clair.*

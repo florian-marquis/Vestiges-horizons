@@ -1,22 +1,35 @@
-# Ignorer les fichiers de build Rust
-target/
+# --- Fichiers temporaires Duo / orchestration ---
+duo-message-*.txt
+multiagents/data/
+multiagents/.venv/
+multiagents/.cursor/
+multiagents/duo.toml
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
-# Ignorer les fichiers de dépendances Cargo
-Cargo.lock
+# --- Rust / Cargo ---
+jeu/target/
+jeu/Cargo.lock
+jeu/benchmark_t7_t8_*.txt
+jeu/benchmark_t7_t8_*.csv
 
-# Ignorer les fichiers temporaires IDE
-.idea/
-.vscode/
+# --- Python ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# --- OS / IDE / Nextcloud ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+*.bak
 *.swp
 *.swo
-
-# Ignorer les fichiers de log
-*.log
-
-# Ignorer les fichiers de cache
-.cache/
-
-# Ignorer les fichiers de build Windows
-*.exe
-*.dll
-*.pdb
+.idea/
+*conflicted copy*
+.sync_*.db*

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Duo — Orchestrateur</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Orchestrateur local</p>
+      <h1>Duo</h1>
+    </div>
+    <nav class="nav">
+      <a href="/">Salon</a>
+      <a href="/orchestre" aria-current="page">Orchestrateur</a>
+      <a href="/comptes">Comptes</a>
+    </nav>
+    <div class="health" id="health">
+      <span class="pill" id="health-cursor">Cursor…</span>
+      <span class="pill" id="health-copilot">Copilot…</span>
+      <span class="pill" id="health-vibe">Vibe…</span>
+      <span class="pill" id="health-antigravity">Antigravity…</span>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="panel sessions">
+      <form id="new-session">
+        <label for="task-input">Tâche</label>
+        <textarea id="task-input" required placeholder="Décrivez la fonctionnalité à concevoir, critiquer et vérifier."></textarea>
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="simulated" selected>Simulé</option>
+          <option value="live">CLI réelles</option>
+        </select>
+        <details>
+          <summary>Réglages</summary>
+          <label for="scenario">Profil simulé</label>
+          <select id="scenario">
+            <option value="collaboration">Collaboration</option>
+            <option value="desaccord">Désaccord</option>
+            <option value="boucle">Boucle</option>
+            <option value="invalide">Réponse invalide</option>
+            <option value="panne">Panne de lancement</option>
+            <option value="lent">Délai</option>
+            <option value="tests_fail">Tests en échec puis correction</option>
+          </select>
+          <div class="roles">
+            <label>Proposant
+              <select id="proposer">
+                <option value="cursor">Cursor</option>
+                <option value="copilot">Copilot</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
+            </label>
+            <label>Critique
+              <select id="critic">
+                <option value="copilot">Copilot</option>
+                <option value="cursor">Cursor</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
+            </label>
+            <label>Implémenteur
+              <select id="implementer">
+                <option value="cursor">Cursor</option>
+                <option value="copilot">Copilot</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
+            </label>
+          </div>
+          <label for="max-turns">Tours maximum <input id="max-turns" type="number" min="1" max="50" value="8"></label>
+          <label for="max-duration">Durée max (s) <input id="max-duration" type="number" min="10" max="86400" value="600"></label>
+          <label for="timeout">Délai agent (s) <input id="timeout" type="number" min="1" max="3600" value="180"></label>
+          <label class="check"><input id="allow-impl" type="checkbox" checked> Autoriser l'implémentation dans le bac à sable</label>
+        </details>
+        <button id="start-button" type="submit">Démarrer</button>
+        <p id="flash" class="flash" role="status"></p>
+      </form>
+      <h2>Historique</h2>
+      <ul id="session-list"></ul>
+    </aside>
+    <section class="panel conversation">
+      <div class="toolbar">
+        <div>
+          <p class="eyebrow" id="session-kicker">Aucune session</p>
+          <h2 id="session-title">Choisissez ou créez une session</h2>
+        </div>
+        <div class="actions">
+          <button id="pause-button" type="button" disabled>Pause</button>
+          <button id="resume-button" type="button" disabled>Reprendre</button>
+          <button id="stop-button" type="button" disabled>Arrêter</button>
+          <button id="retry-button" type="button" disabled>Relancer</button>
+          <button id="export-json" type="button" disabled>JSON</button>
+          <button id="export-md" type="button" disabled>Markdown</button>
+        </div>
+      </div>
+      <div id="chat" class="chat" aria-live="polite"></div>
+    </section>
+    <aside class="panel follow">
+      <section>
+        <h2>Session</h2>
+        <dl id="session-state"></dl>
+      </section>
+      <section>
+        <h2>Agents</h2>
+        <ul id="agent-state"></ul>
+      </section>
+      <section>
+        <h2>Quotas</h2>
+        <ul id="quota-panel"></ul>
+        <button id="refresh-quotas" type="button" class="ghost">Rafraîchir quotas</button>
+      </section>
+      <section>
+        <h2>Tâches</h2>
+        <ul id="task-list"></ul>
+      </section>
+      <section>
+        <h2>Modifications et tests</h2>
+        <div id="changes"></div>
+      </section>
+      <section>
+        <h2>Bilan</h2>
+        <div id="report"></div>
+      </section>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

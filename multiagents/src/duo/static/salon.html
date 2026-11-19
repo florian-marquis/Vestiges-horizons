@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Duo — salon</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Pilote + agents, un salon</p>
+      <h1>Duo</h1>
+    </div>
+    <nav class="nav">
+      <a href="/" aria-current="page">Salon</a>
+      <a href="/orchestre">Orchestrateur</a>
+      <a href="/comptes">Comptes</a>
+    </nav>
+  </header>
+  <main class="layout salon">
+    <aside class="panel sessions">
+      <p class="lead">Le <strong>Pilote</strong> parle en premier et assigne via @agentN. Choisissez combien d'agents le rejoignent, et dans quelle fenêtre chacun tourne.</p>
+      <form id="new-room">
+        <label for="task-input">Tâche commune</label>
+        <textarea id="task-input" required placeholder="Ce que le Pilote et les agents doivent accomplir ensemble."></textarea>
+        <label for="difficulty-select">Difficulté &amp; routage quotas
+          <select id="difficulty-select">
+            <option value="N1">N1 — Trivial / Audit / Doc</option>
+            <option value="N2" selected>N2 — Standard (lot isolé)</option>
+            <option value="N3">N3 — Complexe (invariants / calculs)</option>
+            <option value="N4">N4 — Critique / Escalade</option>
+          </select>
+        </label>
+        <button id="apply-routing-button" class="ghost" type="button">Conseiller outils &amp; modèles selon quotas</button>
+        <div id="pilote-slot" class="slots"></div>
+        <label for="agents-count">Agents en plus du Pilote</label>
+        <input id="agents-count" type="number" min="1" max="5" value="1">
+        <div id="slots" class="slots"></div>
+        <button type="submit">Ouvrir le salon</button>
+        <p id="flash" class="flash" role="status"></p>
+      </form>
+      <h2>Salons</h2>
+      <ul id="room-list"></ul>
+    </aside>
+    <section class="panel conversation">
+      <div class="toolbar">
+        <div>
+          <p class="eyebrow" id="room-kicker">Aucun salon</p>
+          <h2 id="room-title">Ouvrez un salon, puis copiez les consignes</h2>
+        </div>
+        <div class="actions">
+          <button id="stop-button" class="ghost" type="button" disabled>STOP</button>
+          <button id="close-button" type="button" disabled>Clôturer</button>
+        </div>
+      </div>
+      <div id="chat" class="chat" aria-live="polite"></div>
+      <form id="human-form" class="human-form">
+        <label for="human-text">Message aux agents</label>
+        <textarea id="human-text" placeholder="Précision, @pilote / @agent1, ou STOP."></textarea>
+        <button id="send-button" type="submit" disabled>Envoyer</button>
+      </form>
+    </section>
+    <aside class="panel follow">
+      <section>
+        <h2>Présence</h2>
+        <ul id="presence"></ul>
+      </section>
+      <section id="slots-section">
+        <h2>Outils &amp; modèles (Switch à chaud)</h2>
+        <div id="active-slots" class="slots"></div>
+      </section>
+      <section>
+        <h2>Consignes</h2>
+        <div id="prompts"></div>
+      </section>
+    </aside>
+  </main>
+  <script src="/static/salon.js"></script>
+</body>
+</html>

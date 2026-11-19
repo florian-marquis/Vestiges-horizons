@@ -1,0 +1,23 @@
+# Copier ce fichier vers duo.toml pour surcharger les valeurs par défaut.
+# L'écoute reste limitée à la machine locale.
+
+host = "127.0.0.1"
+port = 8765
+data_dir = "data"
+
+# Limites prudentes, modifiables par session depuis l'interface.
+max_turns = 8
+max_duration_seconds = 600
+agent_timeout_seconds = 180
+similarity_threshold = 0.92
+max_corrections = 1
+
+# Racines supplémentaires autorisées pour un dépôt externe explicite.
+# Le répertoire de données et le répertoire de travail sont déjà autorisés.
+allowed_roots = []
+
+# Modèle Cursor CLI (ignoré tant que le CLI `agent` n'est pas authentifié).
+cursor_model = "auto"
+
+# Laisser vide pour le modèle par défaut de Copilot CLI.
+copilot_model = ""

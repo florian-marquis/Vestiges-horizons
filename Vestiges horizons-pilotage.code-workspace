@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": ".",
+			"name": "Vestiges horizons"
+		},
+		{
+			"path": "multiagents",
+			"name": "Duo multiagents"
+		}
+	],
+	"settings": {}
+}
