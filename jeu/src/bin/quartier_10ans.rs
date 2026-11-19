@@ -3,7 +3,8 @@ use std::error::Error;
 use std::io;
 
 use vestiges_horizons::asset::{Asset, AssetType};
-use vestiges_horizons::entities::{EntityId, EntityManager, EntityType};
+use vestiges_horizons::entities::{CausalJournal, EntityId, EntityManager, EntityType};
+use vestiges_horizons::griefs::GriefsState;
 use vestiges_horizons::health::{CareType, DispensaryPatient, DispensaryQueue};
 use vestiges_horizons::household::{FoodQuality, Household, HousingQuality};
 use vestiges_horizons::inputs::{
@@ -11,7 +12,15 @@ use vestiges_horizons::inputs::{
 };
 use vestiges_horizons::market::{GoodType, MarketManager};
 use vestiges_horizons::salary::{PanierComposante, SalaireReelEtGriefsManager};
-use vestiges_horizons::{EventQueue, Id, Phase, Priority, Timestamp};
+use vestiges_horizons::strike::{
+    delta_h_scaled, slots_between, StrikeEndCause, StrikeManager, StrikePhaseState,
+    DEFAULT_ORGANISATION_MILLE, HAZARD_SCALE,
+};
+use vestiges_horizons::{
+    Event, EventData, EventQueue, Id, Phase, Priority, Timestamp, EVENT_TYPE_GRIEF_BOUND_REACHED,
+    EVENT_TYPE_INPUT_CHANGED, EVENT_TYPE_STRIKE_COOLDOWN_ENDED, EVENT_TYPE_STRIKE_ENDED,
+    EVENT_TYPE_STRIKE_TRIGGERED,
+};
 
 const SEED: u64 = 42;
 const DAYS: i64 = 3_650;
@@ -153,6 +162,9 @@ struct ScenarioReport {
     price_history: Vec<u64>,
     market_stockout_days: u64,
     early_stop_day: Option<i64>,
+    /// Trajectoire (u, p, q) journalière par cohorte (indexée [cohorte][jour]),
+    /// enregistrée sans modifier les calculs A2 — utilisée par les lectures B1.
+    input_history: Vec<Vec<InputValues>>,
 }
 
 fn make_household(cohort_id: EntityId, population: u32) -> Household {
@@ -356,6 +368,8 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
 
     let mut import_history = Vec::with_capacity(DAYS as usize);
     let mut price_history = Vec::with_capacity(DAYS as usize);
+    let mut input_history: Vec<Vec<InputValues>> =
+        cohorts.iter().map(|_| Vec::with_capacity(DAYS as usize)).collect();
     let mut market_stockout_days = 0;
     let mut early_stop_day = None;
 
@@ -519,6 +533,7 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
             let p = salary_state.calculate_p(None);
             let values = InputValues { u, p, q };
             cohort.current_inputs = values;
+            input_history[cohort.index].push(values);
             let rationed = rations_eaten < need;
             if rationed {
                 cohort.stats.days_rationed += 1;
@@ -603,7 +618,408 @@ fn run_scenario(kind: ScenarioKind) -> Result<ScenarioReport, Box<dyn Error>> {
         price_history,
         market_stockout_days,
         early_stop_day,
+        input_history,
     })
+}
+
+// ============================================================================
+// TRANCHE B1 — Lectures de grève (Commit 5, spec T7-T8 tranche B1 §6.2)
+// ============================================================================
+//
+// Pilotage 100 % événementiel : la trajectoire (u, p, q) A2 est rejouée via
+// des événements InputChanged à Id déterministe (input_event_id), traités dans
+// l'ordre canonique avec les événements de grève 71-74 encodés par
+// encode_strike_event_id (bit 63 = 1, disjoint des ids InputChanged).
+// Zéro f64/f32/exp/ln : l'intégrale attendue est en u128 via delta_h_scaled.
+
+/// Observation d'une grève déclenchée pendant la lecture B1.
+#[derive(Debug, Clone)]
+struct StrikeObservation {
+    strike_index: u64,
+    start: Timestamp,
+    duration_days: i64,
+    end: Option<(Timestamp, StrikeEndCause)>,
+    g_qmicro: i64,
+}
+
+/// Lecture de grève d'une cohorte sur l'horizon complet.
+/// (champs lus uniquement par les tests -> allow(dead_code) hors test)
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug)]
+struct CohortStrikeReading {
+    index: usize,
+    cohort_id: EntityId,
+    o_mille: u16,
+    strikes: Vec<StrikeObservation>,
+    /// Intégrale analytique entière sur les fenêtres actives (hors OnStrike/Cooldown).
+    expected_active_scaled: u128,
+    /// Intégrale brute sur tout l'horizon [0, DAYS] (complément lisible).
+    expected_brute_scaled: u128,
+    g_day_365: Option<i64>,
+    g_day_1825: Option<i64>,
+    g_day_3650: Option<i64>,
+    g_max_qmicro: i64,
+}
+
+/// Résultat de la lecture de grève d'un scénario.
+#[derive(Debug)]
+struct StrikeReading {
+    kind: ScenarioKind,
+    cohorts: Vec<CohortStrikeReading>,
+    events_processed: u64,
+    verify_i7: bool,
+}
+
+/// Miroir de lecture pour l'intégrale analytique attendue (u128, zéro flottant).
+struct ExpectedMirror {
+    last_ts: Timestamp,
+    g_last: i64,
+    slope_last: i64,
+    expected_active: u128,
+    expected_brute: u128,
+    g_max: i64,
+    g_day_365: Option<i64>,
+    g_day_1825: Option<i64>,
+    g_day_3650: Option<i64>,
+}
+
+impl ExpectedMirror {
+    fn new() -> Self {
+        ExpectedMirror {
+            last_ts: Timestamp::new(0, 0),
+            g_last: 0,
+            slope_last: 0,
+            expected_active: 0,
+            expected_brute: 0,
+            g_max: 0,
+            g_day_365: None,
+            g_day_1825: None,
+            g_day_3650: None,
+        }
+    }
+
+    /// Intègre le segment [last_ts, ts] dans les intégrales attendues.
+    /// La fenêtre active (Accumulating/PendingNextSlot, hors OnStrike/Cooldown)
+    /// est déterminée par `phase_before`.
+    fn integrate(
+        &mut self,
+        phase_before: StrikePhaseState,
+        o_mille: u16,
+        ts: Timestamp,
+        g_now: i64,
+        slope_now: i64,
+    ) {
+        // Segment intégral tronqué à l'horizon de lecture [0, DAYS].
+        let capped = if ts.day > DAYS { Timestamp::new(DAYS, 0) } else { ts };
+        let k = slots_between(self.last_ts, capped);
+        if k > 0 {
+            let d = delta_h_scaled(self.g_last, self.slope_last, u64::from(o_mille), k);
+            self.expected_brute += d;
+            if phase_before == StrikePhaseState::Accumulating
+                || phase_before == StrikePhaseState::PendingNextSlot
+            {
+                self.expected_active += d;
+            }
+        }
+        self.last_ts = ts;
+        self.g_last = g_now;
+        self.slope_last = slope_now;
+        // G observé uniquement dans l'horizon (comme A2, qui observe à next_day <= DAYS).
+        if ts.day <= DAYS {
+            self.g_max = self.g_max.max(g_now);
+            if ts.day == 365 {
+                self.g_day_365 = Some(g_now);
+            }
+            if ts.day == 1_825 {
+                self.g_day_1825 = Some(g_now);
+            }
+            if ts.day == DAYS {
+                self.g_day_3650 = Some(g_now);
+            }
+        }
+    }
+
+    /// Enregistre G à un jalon [365, 1_825, DAYS] franchi (même sans événement ce jour-là).
+    fn record_milestone(&mut self, day: i64, g: i64) {
+        self.g_max = self.g_max.max(g);
+        match day {
+            365 => self.g_day_365 = Some(g),
+            1_825 => self.g_day_1825 = Some(g),
+            DAYS => self.g_day_3650 = Some(g),
+            _ => {}
+        }
+    }
+}
+
+/// Avance `gs` à `ts` en capturant G aux jalons [365, 1_825, DAYS] franchis,
+/// sans jamais revenir en arrière.
+fn advance_observed(
+    gs: &mut GriefsState,
+    m: &mut ExpectedMirror,
+    ts: Timestamp,
+) -> Result<(), Box<dyn Error>> {
+    for milestone in [365i64, 1_825, DAYS] {
+        let ms_ts = Timestamp::new(milestone, 0);
+        if gs.last_update() < ms_ts && ts >= ms_ts {
+            gs.advance_to(ms_ts)?;
+            m.record_milestone(milestone, gs.g_qmicro());
+        }
+    }
+    if gs.last_update() < ts {
+        gs.advance_to(ts)?;
+    }
+    Ok(())
+}
+
+/// Rejoue la trajectoire A2 du scénario en pilotage 100 % événementiel et
+/// produit la lecture de grève B1 (observé vs attendu analytique, détail des grèves).
+fn run_strike_reading(kind: ScenarioKind) -> Result<StrikeReading, Box<dyn Error>> {
+    // Trajectoire (u, p, q) A2 inchangée, enregistrée jour par jour.
+    let report = run_scenario(kind)?;
+    let cohort_ids: Vec<EntityId> = report.cohorts.iter().map(|(id, _)| *id).collect();
+    let index_of = |id: EntityId| cohort_ids.iter().position(|x| *x == id).unwrap();
+
+    let mut queue = EventQueue::new();
+    let mut sm = StrikeManager::new(SEED);
+    let mut journal = CausalJournal::new();
+    let mut griefs: BTreeMap<EntityId, GriefsState> = BTreeMap::new();
+    let mut mirrors: BTreeMap<EntityId, ExpectedMirror> = BTreeMap::new();
+    let mut strikes: BTreeMap<EntityId, Vec<StrikeObservation>> = BTreeMap::new();
+
+    for (ci, cid) in cohort_ids.iter().enumerate() {
+        griefs.insert(*cid, GriefsState::new(*cid));
+        mirrors.insert(*cid, ExpectedMirror::new());
+        sm.cohort_state_mut(*cid);
+        for day in 0..DAYS {
+            let v = report.input_history[ci][day as usize];
+            // Émission événementielle stricte : un InputChanged uniquement sur
+            // changement réel des entrées (jour 0 ou v != v précédent).
+            let changed = day == 0 || v != report.input_history[ci][(day - 1) as usize];
+            if changed {
+                queue.push(Event::new(
+                    input_event_id(day, *cid),
+                    day,
+                    0,
+                    Phase::Comptes,
+                    Priority::new(0),
+                    EVENT_TYPE_INPUT_CHANGED,
+                    EventData::InputChanged {
+                        entity_id: *cid,
+                        u: v.u,
+                        p: v.p,
+                        q: v.q,
+                    },
+                ));
+            }
+        }
+    }
+
+    let mut events_processed = 0u64;
+
+    // Garde-fou d'horizon : tout événement hors [0, DAYS + 100] est ignoré.
+    // (Un k de franchissement géant peut déborder en jour négatif via add_slots ;
+    // on ne traite que l'horizon de lecture, ce qui garantit la terminaison.)
+    const HORIZON_MARGIN: i64 = 100;
+
+    while let Some(ev) = queue.pop() {
+        // add_slots est saturé en i128 (Commit 6) : aucun jour négatif n'est possible.
+        assert!(ev.timestamp.day >= 0, "add_slots saturé : aucun jour négatif");
+        if ev.timestamp.day > DAYS + HORIZON_MARGIN {
+            // La file est ordonnée par timestamp : tout le reste est hors horizon.
+            break;
+        }
+        events_processed += 1;
+        match ev.event_type {
+            EVENT_TYPE_INPUT_CHANGED => {
+                if let EventData::InputChanged { entity_id, u, p, q } = ev.data {
+                    let o = DEFAULT_ORGANISATION_MILLE[index_of(entity_id)];
+                    let gs = griefs.get_mut(&entity_id).unwrap();
+                    advance_observed(gs, mirrors.get_mut(&entity_id).unwrap(), ev.timestamp)?;
+                    let g_now = gs.g_qmicro();
+                    gs.set_inputs_at(u, p, q, ev.timestamp)?;
+                    let new_slope = gs.slope_micro_points_per_day();
+                    let phase_before = sm.phase_of(entity_id);
+                    mirrors
+                        .get_mut(&entity_id)
+                        .unwrap()
+                        .integrate(phase_before, o, ev.timestamp, g_now, new_slope);
+                    sm.on_input_changed(entity_id, ev.timestamp, g_now, new_slope, o, &mut queue);
+                    sm.journal_input_changed(
+                        entity_id,
+                        ev.timestamp,
+                        ev.id.as_u64(),
+                        u,
+                        p,
+                        q,
+                        &mut journal,
+                    );
+                }
+            }
+            EVENT_TYPE_STRIKE_TRIGGERED => {
+                if let EventData::StrikeTriggered { entity_id, draw_index, strike_index, schedule_version } = ev.data {
+                    let o = DEFAULT_ORGANISATION_MILLE[index_of(entity_id)];
+                    let gs = griefs.get_mut(&entity_id).unwrap();
+                    advance_observed(gs, mirrors.get_mut(&entity_id).unwrap(), ev.timestamp)?;
+                    let (g, sl) = (gs.g_qmicro(), gs.slope_micro_points_per_day());
+                    let phase_before = sm.phase_of(entity_id);
+                    mirrors
+                        .get_mut(&entity_id)
+                        .unwrap()
+                        .integrate(phase_before, o, ev.timestamp, g, sl);
+                    if sm.on_strike_triggered(entity_id, ev.timestamp, g, sl, draw_index, strike_index, schedule_version, &mut queue) {
+                        let dur = sm.cohort_state(entity_id).unwrap().duration_days;
+                        sm.journal_strike_triggered(entity_id, ev.timestamp, ev.id.as_u64(), g, &mut journal);
+                        // On ne retient que les grèves démarrant dans l'horizon [0, DAYS].
+                        if ev.timestamp.day <= DAYS {
+                            strikes.entry(entity_id).or_default().push(StrikeObservation {
+                                strike_index: strike_index + 1,
+                                start: ev.timestamp,
+                                duration_days: dur,
+                                end: None,
+                                g_qmicro: g,
+                            });
+                        }
+                    }
+                }
+            }
+            EVENT_TYPE_STRIKE_ENDED => {
+                if let EventData::StrikeEnded { entity_id, strike_index, cause, schedule_version } = ev.data {
+                    let o = DEFAULT_ORGANISATION_MILLE[index_of(entity_id)];
+                    let gs = griefs.get_mut(&entity_id).unwrap();
+                    advance_observed(gs, mirrors.get_mut(&entity_id).unwrap(), ev.timestamp)?;
+                    let (g, sl) = (gs.g_qmicro(), gs.slope_micro_points_per_day());
+                    let phase_before = sm.phase_of(entity_id);
+                    mirrors
+                        .get_mut(&entity_id)
+                        .unwrap()
+                        .integrate(phase_before, o, ev.timestamp, g, sl);
+                    if sm.on_strike_ended(entity_id, ev.timestamp, g, sl, strike_index, cause, schedule_version, &mut queue) {
+                        sm.journal_strike_ended(entity_id, ev.timestamp, ev.id.as_u64(), strike_index, cause, &mut journal);
+                        if let Some(v) = strikes.get_mut(&entity_id) {
+                            if let Some(obs) = v.iter_mut().find(|s| s.strike_index == strike_index) {
+                                obs.end = Some((ev.timestamp, cause));
+                            }
+                        }
+                    }
+                }
+            }
+            EVENT_TYPE_STRIKE_COOLDOWN_ENDED => {
+                if let EventData::StrikeCooldownEnded { entity_id, schedule_version } = ev.data {
+                    let o = DEFAULT_ORGANISATION_MILLE[index_of(entity_id)];
+                    let gs = griefs.get_mut(&entity_id).unwrap();
+                    advance_observed(gs, mirrors.get_mut(&entity_id).unwrap(), ev.timestamp)?;
+                    let (g, sl) = (gs.g_qmicro(), gs.slope_micro_points_per_day());
+                    let phase_before = sm.phase_of(entity_id);
+                    mirrors
+                        .get_mut(&entity_id)
+                        .unwrap()
+                        .integrate(phase_before, o, ev.timestamp, g, sl);
+                    sm.on_cooldown_ended(entity_id, ev.timestamp, g, sl, schedule_version, &mut queue);
+                }
+            }
+            EVENT_TYPE_GRIEF_BOUND_REACHED => {
+                if let EventData::GriefBoundReached { entity_id, bound_qmicro, schedule_version } = ev.data {
+                    let o = DEFAULT_ORGANISATION_MILLE[index_of(entity_id)];
+                    let gs = griefs.get_mut(&entity_id).unwrap();
+                    advance_observed(gs, mirrors.get_mut(&entity_id).unwrap(), ev.timestamp)?;
+                    let (g, sl) = (gs.g_qmicro(), gs.slope_micro_points_per_day());
+                    let phase_before = sm.phase_of(entity_id);
+                    mirrors
+                        .get_mut(&entity_id)
+                        .unwrap()
+                        .integrate(phase_before, o, ev.timestamp, g, sl);
+                    sm.on_grief_bound_reached(entity_id, ev.timestamp, bound_qmicro, schedule_version, g, sl, &mut queue);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Avance finale à (DAYS, 0) avec capture des jalons : G en fin d'horizon, identique à A2.
+    let final_ts = Timestamp::new(DAYS, 0);
+    let mut cohorts_out = Vec::with_capacity(cohort_ids.len());
+    for (ci, cid) in cohort_ids.iter().enumerate() {
+        let o = DEFAULT_ORGANISATION_MILLE[ci];
+        let gs = griefs.get_mut(cid).unwrap();
+        let m = mirrors.get_mut(cid).unwrap();
+        advance_observed(gs, m, final_ts)?;
+        let past_horizon = gs.last_update() > final_ts;
+        // Si des événements ont dépassé l'horizon, G à (DAYS, 0) a été enregistré au passage.
+        let g_end = if past_horizon { m.g_day_3650.unwrap_or_else(|| gs.g_qmicro()) } else { gs.g_qmicro() };
+        let sl_end = gs.slope_micro_points_per_day();
+        let phase_before = sm.phase_of(*cid);
+        m.integrate(phase_before, o, final_ts, g_end, sl_end);
+        if m.g_day_3650.is_none() {
+            m.g_day_3650 = Some(g_end);
+        }
+        let m = mirrors.remove(cid).unwrap();
+        cohorts_out.push(CohortStrikeReading {
+            index: ci,
+            cohort_id: *cid,
+            o_mille: o,
+            strikes: strikes.remove(cid).unwrap_or_default(),
+            expected_active_scaled: m.expected_active,
+            expected_brute_scaled: m.expected_brute,
+            g_day_365: m.g_day_365,
+            g_day_1825: m.g_day_1825,
+            g_day_3650: m.g_day_3650,
+            g_max_qmicro: m.g_max,
+        });
+    }
+
+    Ok(StrikeReading {
+        kind,
+        cohorts: cohorts_out,
+        events_processed,
+        verify_i7: journal.verify_i7(),
+    })
+}
+
+/// Formate une grandeur à l'échelle 10^12 avec 3 décimales par division entière (X.YYY).
+fn format_thousandths_scaled(scaled: u128) -> String {
+    format!(
+        "{}.{:03}",
+        scaled / HAZARD_SCALE,
+        (scaled % HAZARD_SCALE) / 1_000_000_000u128
+    )
+}
+
+/// Affiche la section de lecture de grève B1 d'un scénario.
+fn print_strike_reading(reading: &StrikeReading) {
+    println!(
+        "--- {} — lectures de grève B1 (graine {SEED}, {DAYS} j) ---",
+        reading.kind.label()
+    );
+    println!(
+        "events_processed = {}, verify_i7 = {}",
+        reading.events_processed, reading.verify_i7
+    );
+    for c in &reading.cohorts {
+        println!(
+            "cohorte {} (O = {}) : grèves observées = {}, attendu fenêtres actives = {}, attendu brut = {}",
+            c.index,
+            c.o_mille,
+            c.strikes.len(),
+            format_thousandths_scaled(c.expected_active_scaled),
+            format_thousandths_scaled(c.expected_brute_scaled)
+        );
+        for s in &c.strikes {
+            let end = match &s.end {
+                Some((ts, cause)) => format!(" fin=({}, {}) cause={:?}", ts.day, ts.seq, cause),
+                None => " fin=-".to_string(),
+            };
+            println!(
+                "  grève #{} : début=({}, {}), durée={} j,{}, G au déclenchement = {} qµpt ({} pts)",
+                s.strike_index,
+                s.start.day,
+                s.start.seq,
+                s.duration_days,
+                end,
+                s.g_qmicro,
+                s.g_qmicro / 4_000_000
+            );
+        }
+    }
 }
 
 fn format_qmicro(value: Option<i64>) -> String {
@@ -709,6 +1125,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         let report = run_scenario(kind)?;
         print_report(&report);
         print_shock_u(&report);
+    }
+
+    // Lectures de grève Tranche B1 (sorties A2 ci-dessus inchangées).
+    println!();
+    println!("=== Lectures de grève Tranche B1 (graine {SEED}, {DAYS} j) ===");
+    for kind in [
+        ScenarioKind::S0b,
+        ScenarioKind::S1,
+        ScenarioKind::S2,
+        ScenarioKind::S4,
+    ] {
+        let reading = run_strike_reading(kind)?;
+        print_strike_reading(&reading);
     }
     Ok(())
 }
@@ -941,5 +1370,59 @@ mod tests {
         let forward = run_permuted_events(&[0, 1, 2, 3]);
         let reversed = run_permuted_events(&[3, 2, 1, 0]);
         assert_eq!(forward, reversed);
+    }
+
+    /// B1 §6.2 — déterminisme bit à bit des lectures de grève + verify_i7 vert
+    /// sur S0b, S1, S2, S4 (graine 42, 3650 j).
+    #[test]
+    fn strike_readings_are_deterministic_and_i7_clean() {
+        for kind in [
+            ScenarioKind::S0b,
+            ScenarioKind::S1,
+            ScenarioKind::S2,
+            ScenarioKind::S4,
+        ] {
+            let a = run_strike_reading(kind).unwrap();
+            let b = run_strike_reading(kind).unwrap();
+            assert_eq!(
+                format!("{:?}", a),
+                format!("{:?}", b),
+                "déterminisme bit à bit pour {:?}",
+                kind
+            );
+            assert!(a.verify_i7, "verify_i7 vert pour {:?}", kind);
+            assert_eq!(a.events_processed, b.events_processed);
+            if kind == ScenarioKind::S0b {
+                // S0b : rien ne change après le jour 0 -> coût événementiel, pas quotidien.
+                assert!(
+                    a.events_processed <= 20,
+                    "S0b : coût proportionnel aux événements (<= 20), obtenu {}",
+                    a.events_processed
+                );
+            }
+        }
+    }
+
+    /// B1 §6.2 — invariance de G : la lecture de grève ne modifie pas G par rapport
+    /// au run A2 (jours 365, 1825, 3650 et g_max) pour S0b, S1, S2, S4.
+    #[test]
+    fn strike_reading_preserves_a2_griefs() {
+        for kind in [
+            ScenarioKind::S0b,
+            ScenarioKind::S1,
+            ScenarioKind::S2,
+            ScenarioKind::S4,
+        ] {
+            let report = run_scenario(kind).unwrap();
+            let reading = run_strike_reading(kind).unwrap();
+            for (ci, (cid, stats)) in report.cohorts.iter().enumerate() {
+                let rc = &reading.cohorts[ci];
+                assert_eq!(rc.cohort_id, *cid, "{:?}", kind);
+                assert_eq!(rc.g_day_365, stats.g_day_365, "{:?} cohorte {} G365", kind, ci);
+                assert_eq!(rc.g_day_1825, stats.g_day_1825, "{:?} cohorte {} G1825", kind, ci);
+                assert_eq!(rc.g_day_3650, stats.g_day_3650, "{:?} cohorte {} G3650", kind, ci);
+                assert_eq!(rc.g_max_qmicro, stats.g_max_qmicro, "{:?} cohorte {} Gmax", kind, ci);
+            }
+        }
     }
 }

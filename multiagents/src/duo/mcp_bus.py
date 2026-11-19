@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
+from urllib.parse import urlencode
 
 from duo import __version__
+from duo.wait_room import http_get, http_patch, http_post, wait_until_message
 
 PROTOCOL = "2024-11-05"
 TOOLS = (
@@ -40,8 +40,9 @@ TOOLS = (
     {
         "name": "attendre",
         "description": (
-            "Bloque jusqu'à un message de l'autre agent ou de l'humain. "
-            "Si le délai expire sans message, rappelle cet outil. Ne termine pas la collaboration."
+            "Bloque jusqu'au prochain message visible ou à la clôture du salon. "
+            "Ne revient pas sur un délai vide : les polls sont enchaînés côté outil. "
+            "Ne termine pas la collaboration."
         ),
         "inputSchema": {
             "type": "object",
@@ -52,9 +53,76 @@ TOOLS = (
                     "type": "integer",
                     "description": "Dernier seq déjà traité. 0 pour le Pilote, 1 pour un agent.",
                 },
-                "timeout": {"type": "integer", "description": "Secondes, 90 par défaut, 90 maximum."},
+                "timeout": {
+                    "type": "integer",
+                    "description": "Durée d'un poll HTTP en secondes (défaut 90, max 90). L'outil enchaîne les polls.",
+                },
             },
             "required": ["room_id", "token"],
+        },
+    },
+    {
+        "name": "etat_quotas_modeles",
+        "description": (
+            "Récupère les modèles disponibles, quotas restants et recommandations de routage "
+            "pour le Pilote (@pilote) et les agents (@agent1..N) selon la difficulté (N1..N4). "
+            "Peut synchroniser les quotas Antigravity via antigravity_swarm."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "difficulty": {
+                    "type": "string",
+                    "description": "Niveau de difficulté de la tâche : N1, N2, N3 ou N4 (défaut N2).",
+                },
+                "pilote_provider": {
+                    "type": "string",
+                    "description": "Outil courant du Pilote : antigravity, copilot, vibe ou cursor.",
+                },
+                "antigravity_swarm": {
+                    "type": "object",
+                    "description": "Sortie JSON optionnelle de swarm(action='models', all=True) à synchroniser.",
+                },
+            },
+        },
+    },
+    {
+        "name": "changer_slot",
+        "description": (
+            "Change à chaud l'outil (provider/window) et/ou le modèle d'un rôle du salon, "
+            "y compris le Pilote (@pilote) ou un agent (@agent1..@agent5), sans perdre le salon ni les jetons."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "room_id": {"type": "string"},
+                "token": {"type": "string", "description": "Optionnel (conservé pour cohérence)."},
+                "role": {"type": "string", "description": "Rôle ciblé : pilote ou agent1..agent5."},
+                "provider": {"type": "string", "description": "antigravity, copilot, vibe ou cursor."},
+                "window": {"type": "string", "description": "antigravity, vscode ou cursor."},
+                "model": {"type": "string", "description": "Identifiant ou nom du modèle à brancher."},
+                "reason": {"type": "string", "description": "Motif du switch (quota, difficulté N1..N4, escalade)."},
+            },
+            "required": ["room_id", "role"],
+        },
+    },
+    {
+        "name": "apprendre_modeles",
+        "description": (
+            "Enregistre durablement de nouveaux modèles signalés par l'humain pour un fournisseur "
+            "(antigravity, copilot, vibe, cursor) afin qu'ils soient utilisables dans Duo et le routage."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "provider": {"type": "string", "description": "antigravity, copilot, vibe ou cursor."},
+                "models": {
+                    "type": "array",
+                    "description": "Liste d'identifiants de modèles ou d'objets {id, label?, tier?, cost_hint?}.",
+                    "items": {"type": ["string", "object"]},
+                },
+            },
+            "required": ["provider", "models"],
         },
     },
 )
@@ -86,8 +154,9 @@ def _handle(message: dict, base: str) -> dict | None:
                 "instructions": (
                     "Tu es relié au salon Duo. L'identité vient du token de ta consigne. "
                     "lire_salon lit les messages, dire publie le tien, "
-                    "attendre bloque jusqu'au prochain message. "
-                    "Après dire, rappelle attendre. Un délai vide veut dire de rappeler attendre."
+                    "attendre bloque jusqu'au prochain message ou à la clôture. "
+                    "Après dire, rappelle attendre. "
+                    "Si l'IDE coupe l'outil, rappelle immédiatement attendre avec le même after."
                 ),
             }
         elif method == "ping":
@@ -108,28 +177,64 @@ def _call_tool(params: dict, base: str) -> dict:
     arguments = params.get("arguments") or {}
     room_id = str(arguments.get("room_id") or "").strip()
     token = str(arguments.get("token") or "").strip()
-    if not room_id or not token:
-        return _tool_error("room_id et token sont requis.")
     try:
-        if name == "lire_salon":
-            payload = _get(f"{base}/api/rooms/{room_id}", timeout=30)
-        elif name == "dire":
-            text = arguments.get("text")
-            if not isinstance(text, str) or not text.strip():
-                return _tool_error("Le texte à publier est vide.")
-            payload = _send(
-                f"{base}/api/rooms/{room_id}/messages",
-                {"token": token, "text": text},
-                timeout=30,
+        if name == "etat_quotas_modeles":
+            swarm_payload = arguments.get("antigravity_swarm")
+            if isinstance(swarm_payload, dict) and swarm_payload:
+                http_post(f"{base}/api/providers/antigravity/sync", swarm_payload, timeout=20)
+            query = urlencode(
+                {
+                    "difficulty": str(arguments.get("difficulty") or "N2").strip(),
+                    "pilote_provider": str(arguments.get("pilote_provider") or "antigravity").strip(),
+                }
             )
-        elif name == "attendre":
-            after = int(arguments.get("after") or 0)
-            timeout = int(arguments.get("timeout") or 90)
-            timeout = max(1, min(timeout, 90))
-            payload = _get(
-                f"{base}/api/rooms/{room_id}/wait?token={_quote(token)}&after={after}&timeout={timeout}",
-                timeout=timeout + 15,
+            payload = http_get(f"{base}/api/routing?{query}", timeout=30)
+        elif name == "changer_slot":
+            role = str(arguments.get("role") or "").strip().lower()
+            if not room_id or not role:
+                return _tool_error("room_id et role sont requis.")
+            body = {"role": role}
+            for field in ("provider", "window", "model", "reason"):
+                val = arguments.get(field)
+                if isinstance(val, str) and val.strip():
+                    body[field] = val.strip()
+            payload = http_patch(f"{base}/api/rooms/{room_id}/slots", body, timeout=30)
+        elif name == "apprendre_modeles":
+            provider = str(arguments.get("provider") or "").strip().lower()
+            models = arguments.get("models")
+            if provider not in {"antigravity", "copilot", "vibe", "cursor"}:
+                return _tool_error("provider doit être antigravity, copilot, vibe ou cursor.")
+            if not isinstance(models, list) or not models:
+                return _tool_error("models doit être une liste non vide.")
+            payload = http_post(
+                f"{base}/api/providers/{provider}/sync",
+                {"add_models": models},
+                timeout=20,
             )
+        elif name in {"lire_salon", "dire", "attendre"}:
+            if not room_id or not token:
+                return _tool_error("room_id et token sont requis.")
+            if name == "lire_salon":
+                payload = http_get(f"{base}/api/rooms/{room_id}", timeout=30)
+            elif name == "dire":
+                text = arguments.get("text")
+                if not isinstance(text, str) or not text.strip():
+                    return _tool_error("Le texte à publier est vide.")
+                payload = http_post(
+                    f"{base}/api/rooms/{room_id}/messages",
+                    {"token": token, "text": text},
+                    timeout=30,
+                )
+            else:
+                after = int(arguments.get("after") or 0)
+                timeout = int(arguments.get("timeout") or 90)
+                payload = wait_until_message(
+                    base,
+                    room_id,
+                    token,
+                    after,
+                    poll_timeout=timeout,
+                )
         else:
             return _tool_error("Outil inconnu.")
     except RuntimeError as exc:
@@ -138,44 +243,6 @@ def _call_tool(params: dict, base: str) -> dict:
         "content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False, indent=2)}],
         "isError": False,
     }
-
-
-def _quote(token: str) -> str:
-    from urllib.parse import quote
-
-    return quote(token, safe="")
-
-
-def _get(url: str, timeout: int) -> dict:
-    request = urllib.request.Request(url, method="GET")
-    return _read_response(request, timeout)
-
-
-def _send(url: str, payload: dict, timeout: int) -> dict:
-    body = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=body,
-        headers={
-            "Content-Type": "application/json",
-            "X-Duo-Request": "1",
-        },
-        method="POST",
-    )
-    return _read_response(request, timeout)
-
-
-def _read_response(request: urllib.request.Request, timeout: int) -> dict:
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(detail or f"Le salon a répondu {exc.code}.") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(
-            "Le salon Duo ne répond pas. Lancez start.bat, puis réessayez."
-        ) from exc
 
 
 def _tool_error(text: str) -> dict:

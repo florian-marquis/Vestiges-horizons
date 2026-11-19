@@ -42,8 +42,12 @@ def test_room_starts_with_the_task_and_separate_tokens(tmp_path: Path):
         assert tokens["pilote"] != tokens["agent1"]
         assert tokens["pilote"] in body["consignes"]["pilote"]
         assert "etat.md" in body["consignes"]["pilote"]
+        assert "Seul le Pilote est autorisé à modifier etat.md" in body["consignes"]["pilote"]
         assert "@agent1" in body["consignes"]["pilote"]
-        assert "timeout=90" in body["consignes"]["agent1"]
+        assert "duo.wait_room" in body["consignes"]["agent1"]
+        assert "ne revient que sur un message ou la clôture" in body["consignes"]["agent1"]
+        assert "LECTURE SEULE" in body["consignes"]["agent1"]
+        assert "sans modifier etat.md" in body["consignes"]["agent1"]
         hidden = client.get(f"/api/rooms/{body['room']['id']}/consignes")
         assert hidden.status_code == 403
 
@@ -249,6 +253,149 @@ def test_mcp_lists_tools_and_reports_a_down_salon():
     assert completed.returncode == 0
     lines = [json.loads(line) for line in completed.stdout.decode("utf-8").splitlines() if line.strip()]
     assert lines[0]["id"] == 1
-    names = [tool["name"] for tool in lines[1]["result"]["tools"]]
-    assert names == ["lire_salon", "dire", "attendre"]
+    tools = lines[1]["result"]["tools"]
+    names = [tool["name"] for tool in tools]
+    assert names == [
+        "lire_salon",
+        "dire",
+        "attendre",
+        "etat_quotas_modeles",
+        "changer_slot",
+        "apprendre_modeles",
+    ]
+    attendre = next(tool for tool in tools if tool["name"] == "attendre")
+    assert "clôture" in attendre["description"]
+    assert "délai vide" in attendre["description"]
     assert lines[2]["result"]["isError"] is True
+
+
+def test_wait_until_message_retries_empty_timeout(monkeypatch):
+    from duo.wait_room import wait_until_message
+
+    calls = {"n": 0}
+
+    def fake_get(url: str, timeout: int):
+        del url, timeout
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"messages": [], "last_seq": 1, "timed_out": True, "closed": False}
+        return {
+            "messages": [{"seq": 2, "sender": "pilote", "text": "go"}],
+            "last_seq": 2,
+            "timed_out": False,
+            "closed": False,
+        }
+
+    monkeypatch.setattr("duo.wait_room.http_get", fake_get)
+    payload = wait_until_message("http://example", "room", "tok", after=1, poll_timeout=1)
+    assert calls["n"] == 2
+    assert payload["timed_out"] is False
+    assert payload["messages"][0]["text"] == "go"
+
+
+def test_wait_until_message_returns_on_closed(monkeypatch):
+    from duo.wait_room import wait_until_message
+
+    calls = {"n": 0}
+
+    def fake_get(url: str, timeout: int):
+        del url, timeout
+        calls["n"] += 1
+        return {"messages": [], "last_seq": 1, "timed_out": False, "closed": True}
+
+    monkeypatch.setattr("duo.wait_room.http_get", fake_get)
+    payload = wait_until_message("http://example", "room", "tok", after=1, poll_timeout=1)
+    assert calls["n"] == 1
+    assert payload["closed"] is True
+    assert payload["timed_out"] is False
+
+
+def test_wait_room_cli_prints_closed_payload(monkeypatch, capsys):
+    from duo.wait_room import main
+
+    monkeypatch.setattr(
+        "duo.wait_room.wait_until_message",
+        lambda *args, **kwargs: {
+            "messages": [],
+            "last_seq": 1,
+            "timed_out": False,
+            "closed": True,
+        },
+    )
+    assert main(["room-id", "token", "1"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["closed"] is True
+    assert printed["timed_out"] is False
+
+
+def test_room_pilote_slot_and_live_switch_for_pilote_and_agent(tmp_path: Path):
+    with _client(tmp_path) as client:
+        created = client.post(
+            "/api/rooms",
+            headers=HEADERS,
+            json={
+                "task": "Implémenter une tranche N3.",
+                "agents_count": 3,
+                "pilote": {
+                    "provider": "antigravity",
+                    "window": "antigravity",
+                    "model": "gemini-pro-orchestrator-g1-pro",
+                },
+                "slots": [
+                    {"window": "cursor", "provider": "cursor", "model": "auto"},
+                    {"window": "vscode", "provider": "copilot", "model": "gpt-4.1"},
+                    {"window": "vscode", "provider": "vibe", "model": "devstral-medium-latest"},
+                ],
+            },
+        )
+        assert created.status_code == 200
+        body = created.json()
+        room_id = body["room"]["id"]
+        pilote_token = body["pilote_token"]
+        assert body["room"]["pilote_slot"]["provider"] == "antigravity"
+        assert body["room"]["pilote_slot"]["model"] == "gemini-pro-orchestrator-g1-pro"
+        assert "gemini-pro-orchestrator-g1-pro" in body["consignes"]["pilote"]
+        assert "gpt-4.1" in body["consignes"]["agent2"]
+
+        posted = client.post(
+            f"/api/rooms/{room_id}/messages",
+            headers=HEADERS,
+            json={"token": pilote_token, "text": "@agent2 analyse le module."},
+        )
+        assert posted.status_code == 200
+        seq_after_post = posted.json()["seq"]
+
+        switched_pilote = client.patch(
+            f"/api/rooms/{room_id}/slots",
+            headers=HEADERS,
+            json={
+                "role": "pilote",
+                "provider": "copilot",
+                "model": "claude-sonnet-4.6",
+                "reason": "Quota Antigravity bas",
+            },
+        )
+        assert switched_pilote.status_code == 200
+        sp = switched_pilote.json()
+        assert sp["role"] == "pilote"
+        assert sp["slot"]["provider"] == "copilot"
+        assert sp["slot"]["window"] == "vscode"
+        assert sp["slot"]["model"] == "claude-sonnet-4.6"
+        assert pilote_token in sp["consigne"]
+        assert "claude-sonnet-4.6" in sp["consigne"]
+        assert f"SEQ vaut {seq_after_post}" in sp["consigne"]
+
+        switched_agent = client.patch(
+            f"/api/rooms/{room_id}/slots",
+            headers=HEADERS,
+            json={
+                "role": "agent2",
+                "provider": "copilot",
+                "model": "claude-sonnet-4.6",
+                "reason": "Passage N3",
+            },
+        )
+        assert switched_agent.status_code == 200
+        sa = switched_agent.json()
+        assert sa["slot"]["model"] == "claude-sonnet-4.6"
+        assert body["tokens"]["agent2"] in sa["consigne"]

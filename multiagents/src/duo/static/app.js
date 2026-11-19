@@ -57,10 +57,13 @@ function badge(text, className) {
   return span;
 }
 
+const PROVIDER_NAMES = ["cursor", "copilot", "vibe", "antigravity"];
+
 function renderHealth(data) {
-  for (const name of ["cursor", "copilot"]) {
+  for (const name of PROVIDER_NAMES) {
     const item = data.adapters[name];
     const node = $(`health-${name}`);
+    if (!node || !item) continue;
     node.className = "pill";
     if (!item.available) {
       node.classList.add("bad");
@@ -77,6 +80,41 @@ function renderHealth(data) {
     }
     node.title = item.detail;
   }
+}
+
+function renderQuotas(providers) {
+  const panel = $("quota-panel");
+  if (!panel) return;
+  panel.replaceChildren();
+  for (const provider of providers || []) {
+    const title = document.createElement("li");
+    title.className = "quota-provider";
+    title.textContent = provider.label || provider.id;
+    panel.append(title);
+    for (const item of provider.quotas || []) {
+      const li = document.createElement("li");
+      if (item.status === "live") {
+        const bits = [];
+        if (item.remaining != null) bits.push(`${item.remaining} restants`);
+        if (item.limit != null) bits.push(`limite ${item.limit}`);
+        if (item.detail) bits.push(item.detail);
+        li.textContent = `${item.label} : ${bits.join(" · ") || "ok"}`;
+      } else {
+        li.textContent = `${item.label} : indisponible`;
+        li.title = item.detail || "";
+      }
+      panel.append(li);
+    }
+  }
+}
+
+async function refreshHealthAndQuotas() {
+  const [health, providers] = await Promise.all([
+    api("/api/health", { method: "GET", headers: {} }),
+    api("/api/providers", { method: "GET", headers: {} }),
+  ]);
+  renderHealth(health);
+  renderQuotas(providers.providers);
 }
 
 function renderSessions(items) {
@@ -258,5 +296,12 @@ $("export-md").addEventListener("click", () => {
   if (currentId) window.open(`/api/sessions/${currentId}/export?format=md`, "_blank");
 });
 
-api("/api/health", { method: "GET", headers: {} }).then(renderHealth).catch((error) => flash(error.message));
+const refreshQuotasBtn = $("refresh-quotas");
+if (refreshQuotasBtn) {
+  refreshQuotasBtn.addEventListener("click", () => {
+    refreshHealthAndQuotas().then(() => flash("Santé et quotas rafraîchis.")).catch((error) => flash(error.message));
+  });
+}
+
+refreshHealthAndQuotas().catch((error) => flash(error.message));
 refreshList().catch((error) => flash(error.message));

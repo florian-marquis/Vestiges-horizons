@@ -617,13 +617,18 @@ impl CausalJournal {
     
     /// Ajoute une entrée au journal
     /// Vérifie que les causes sont strictement antérieures (I7)
+    ///
+    /// Arbitrage 6 (Tranche B1, spec §5.3) : la comparaison porte sur le tuple
+    /// `(timestamp, phase)`, et non plus sur `timestamp` seul. Une cause au même
+    /// `(day, seq)` mais de phase antérieure (ex. `Comptes = 3` avant `Social = 6`)
+    /// est acceptée.
     pub fn add_entry(&mut self, entry: JournalEntry) -> Option<u64> {
-        // Vérifier I7 : causes doivent être strictement antérieures
+        // Vérifier I7 : causes doivent être strictement antérieures (à (timestamp, phase) près)
         for &cause_id in &entry.causes {
             let cause_entry = self.entries.get(&cause_id);
             if let Some(cause) = cause_entry {
-                // La cause doit être strictement antérieure
-                if cause.timestamp >= entry.timestamp {
+                // La cause doit être strictement antérieure en (timestamp, phase)
+                if (cause.timestamp, cause.phase) >= (entry.timestamp, entry.phase) {
                     // Violation de I7 : cause n'est pas strictement antérieure
                     return None;
                 }
@@ -697,7 +702,8 @@ impl CausalJournal {
         summaries
     }
     
-    /// Vérifie I7 : chaque entrée référence des ids existants à sa date
+    /// Vérifie I7 : chaque entrée référence des ids existants strictement
+    /// antérieurs en `(timestamp, phase)` (arbitrage 6, spec B1 §5.3)
     pub fn verify_i7(&self) -> bool {
         for (id, entry) in &self.entries {
             for &cause_id in &entry.causes {
@@ -706,9 +712,9 @@ impl CausalJournal {
                     return false;
                 }
                 
-                // La cause doit être strictement antérieure
+                // La cause doit être strictement antérieure en (timestamp, phase)
                 let cause = self.entries.get(&cause_id).unwrap();
-                if cause.timestamp >= entry.timestamp {
+                if (cause.timestamp, cause.phase) >= (entry.timestamp, entry.phase) {
                     return false;
                 }
             }

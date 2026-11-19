@@ -4,13 +4,16 @@ Duo est une application locale. Le navigateur parle à FastAPI sur `127.0.0.1`.
 
 ## Salon
 
-Le salon est un tableau de messages. Les rôles sont génériques : `pilote` (parle en premier) et `agent1`…`agentN` (1 à 5, réglés dans l'UI). Chaque agent a une fenêtre `cursor` ou `vscode`. Les agents s'y connectent par HTTP ou MCP (`lire_salon`, `dire`, `attendre`). `attendre` ne réveille que sur un message visible pour le rôle (broadcast, `@role`, ou humain). L'identité vient du jeton (`room_tokens`). Le fichier `etat.md` est maintenu par les agents dans le workspace, pas par le serveur.
+Le salon est un tableau de messages. Les rôles sont génériques : `pilote` (parle en premier) et `agent1`…`agentN` (1 à 5, réglés dans l'UI). Chaque agent a une fenêtre `cursor` ou `vscode`. Les agents s'y connectent par HTTP ou MCP (`lire_salon`, `dire`, `attendre`). `attendre` ne réveille que sur un message visible pour le rôle (broadcast, `@role`, ou humain). L'identité vient du jeton (`room_tokens`). Le fichier `etat.md` est maintenu exclusivement par le Pilote dans le workspace (lecture seule pour les autres agents).
+
+L'API `/wait` reste un long-poll plafonné à 90 s. Côté agent, MCP `attendre` et `python -m duo.wait_room` enchaînent ces polls jusqu'à un message visible ou la clôture du salon, pour que le modèle ne voie pas un `timed_out` vide (anti-raccrochage). Si l'IDE coupe l'outil, la consigne dit de rappeler immédiatement l'attente avec le même `SEQ`.
 
 ```mermaid
 flowchart LR
-  pilote[Pilote] --> bus[Salon]
-  agent1[Agent1] --> bus
-  agentN[AgentN] --> bus
+  pilote[Pilote] --> client[MCP_ou_wait_room]
+  agent1[Agent1] --> client
+  agentN[AgentN] --> client
+  client -->|"polls 90s"| bus[Salon]
   humain[Navigateur] --> bus
   bus --> etat[etat.md]
 ```
@@ -22,16 +25,17 @@ L'orchestrateur est le seul composant qui décide du tour suivant. Les adaptateu
 ```mermaid
 flowchart TD
   ui[Interface statique] --> api[FastAPI]
+  comptes[Page Comptes] --> api
+  api --> providers[Providers OAuth CLI]
+  providers --> osStore[Coffre OS / stores CLI]
   api --> orch[Orchestrateur]
   orch --> db[(SQLite)]
   orch --> sandbox[Bac a sable Git]
-  orch --> cursor[Adaptateur Cursor]
-  orch --> copilot[Adaptateur Copilot]
-  cursor --> simC[Simule]
-  cursor --> agentCli[CLI agent]
-  copilot --> simP[Simule]
-  copilot --> copilotCli[CLI copilot]
+  orch --> adapters[Adapters CLI]
+  adapters --> osStore
 ```
+
+Providers orchestrateur : `cursor`, `copilot`, `vibe`, `antigravity`. L'auth OAuth passe par les CLI officielles (`agent login`, `copilot login`, `vibe --setup`, `agy`). Duo ne stocke aucun secret — seulement des métadonnées non secrètes (`providers_meta.json`). Les quotas sont best-effort ; si indisponibles → `unavailable`, jamais un chiffre inventé.
 
 ## Flux d'un tour
 

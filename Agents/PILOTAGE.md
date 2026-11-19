@@ -83,13 +83,29 @@ Une instruction est un coût payé à **chaque session** ; son gain doit être s
 - **Supprimer** (si obsolète ou inapplicable).
 *Exemple : La règle 25 (spécification de tâche) coûte ~200 tokens. Si elle n'est utilisée que pour 1 tâche sur 10, son gain peut être < coût → à évaluer.*
 
-## 7. Sélection des modèles
+## 7. Sélection des modèles, spécialisation stable par session et apprentissage
 
-Lorsqu'un morceau de travail est jugé trop difficile à réaliser avec le modèle actuel, **estimer le modèle le moins coûteux nécessaire** pour accomplir ce morceau. L'agent obtient cette information en effectuant une recherche internet.
+Avant d'ouvrir un salon Duo, le Pilote relève les modèles et quotas disponibles (`swarm(action="models", all=True)` côté Antigravity + outil MCP `etat_quotas_modeles` ou `GET /api/routing` côté Duo) et arrête **un modèle fixe par agent pour toute la session (`session_profile`)** :
+- **Tâches simples `N1`–`N2`** : routées vers un agent léger/inclus (par défaut `@agent2` Copilot sur `gpt-4.1` **0x**).
+- **Tâches complexes `N2`–`N3`** : routées vers un agent fort (par défaut `@agent3` Mistral Vibe sur `mistral-large-4-0-3` / `mistral-large-latest` — ou inversion vers Copilot `claude-sonnet-4.6` `1x` + Vibe léger si Vibe est épuisé).
+- **Escalade `N4`** : `@agent1` Cursor (en veille le reste du temps).
+
+Les agents IDE (Copilot, Vibe, Cursor) ne pouvant pas modifier seuls leur sélecteur de modèle, cette spécialisation évite de solliciter l'utilisateur en cours de session : le Pilote demande à l'utilisateur de régler le modèle de chaque fenêtre à l'ouverture, et ne redemande un switch (`changer_slot` / `PATCH /api/rooms/{id}/slots`) qu'en cas d'épuisement de quota (`<= 5 %`) ou d'escalade critique. Si l'utilisateur signale de nouveaux modèles disponibles dans un outil, le Pilote les enregistre immédiatement via MCP `apprendre_modeles` (`POST /api/providers/{id}/sync` avec `add_models`).
+
+| Difficulté | `@pilote` (Antigravity / repli Copilot-Vibe-Cursor) | `@agent2` GitHub Copilot | `@agent3` Mistral Vibe | `@agent1` Cursor (secours/escalade) |
+| --- | --- | --- | --- | --- |
+| **N1** (Trivial / Audit / Doc) | `gemini-3.8-flash-high` (5h éco) / `gemini-4-argon-low` (hebdo) / repli `gpt-4.1` (0x) | `gpt-4.1` / `gpt-5-mini` (**0x inclus**) | `devstral-small-latest` (éco) | `auto` (veille) |
+| **N2** (Standard — lot isolé) | `Orchestrator (Argon)` / `gemini-4-hydrogen-medium` / repli `gemini-3-flash` (0.33x) | `gpt-4.1` (0x) ou `gemini-3-flash` (0.33x) | `devstral-medium-latest` / `mistral-large-4-0-3` | `grok-4.7` / `auto` (secours) |
+| **N3** (Complexe — Invariants I1–I9) | `Orchestrator (Argon)` / `gemini-4-hydrogen-high` / repli `claude-sonnet-4.6` (1x) | `claude-sonnet-4.6` (1x) / `gemini-2.5-pro` (1x) | `mistral-large-4-0-3` / `mistral-large-latest` | `claude-4.6-sonnet` (escalade) |
+| **N4** (Critique / Escalade) | `claude-opus-5-5-high` / `gemini-4-hydrogen-xhigh` / repli `claude-opus-4.6` (3x) | `claude-opus-4.6` (3x) / `claude-sonnet-4.6` | `mistral-large-4-0-3` / `mistral-large-latest` | `claude-4.6-opus` (escalade) |
 
 **Catégories de quotas** :
-- **Quota modèles maison Cursor** : Cursor 2.5, Grok 4.6, Grok 4.7
-- **Quota modèles extérieurs Cursor** : Gemini, Claude, GPT
+- **Google Antigravity** : fenêtre glissante **5h** (`Flash`, `Hydrogen`, `Neon`, `Claude`, `GPT-OSS`) vs fenêtre **hebdomadaire** (`Orchestrator (Argon)`, `Gemini 4 Argon`), temps réel via `swarm(action="models", all=True)`.
+- **GitHub Copilot** : multiplicateurs premium (`0x` inclus vs `0.33x` vs `1x` vs `3x`), quota live via `/copilot_internal/user`.
+- **Mistral Vibe** : `mistral-large-4-0-3`, `devstral-*`, `codestral-latest`, `mistral-large-latest` via `~/.vibe/config.toml` + API `/v1/models` + apprentissage `apprendre_modeles` + quota manuel sur `/comptes`.
+- **Cursor** : **Quota modèles maison** (`Auto`, `Cursor 2.5`, `Grok 4.6/4.7`) vs **Quota modèles extérieurs** (`Gemini`, `Claude`, `GPT`), usage live via `usage-summary`.
+
+En cas de switch d'outil du Pilote (`changer_slot`), reprendre sur `etat.md` avec le `last_seq` fourni.
 
 ## 8. Proposition proactive de la suite
 
@@ -119,3 +135,5 @@ Si une décision de l'utilisateur est nécessaire, **préciser systématiquement
 - [2026-11-17] Obligation systématique du salon Duo à chaque étape de codage (réouverture + demande explicite à l'utilisateur de connecter les agents) dans `AGENTS.md`, `agents/PILOTAGE.md` et `.cursor/skills/duo-salon/SKILL.md`. Motif : demande utilisateur explicite pour garantir l'orchestration multi-agents à chaque lot de code. Test économique : gain estimé 180 tokens/session (zéro oubli d'orchestration ou travail isolé non coordonné) vs coût 35 tokens/session.
 - [2026-11-17] Prise en compte des évolutions de `multiagents/` (attente opaque `wait_room` anti-raccrochage sur MCP/CLI et page OAuth/quotas `/comptes` pour `cursor`, `copilot`, `vibe`, `antigravity`) dans `AGENTS.md`, `.cursor/skills/duo-salon/SKILL.md` et `jeu/Agents/DUO-SALON.md`. Motif : alignement sur l'outil Duo mis à jour. Test économique : gain estimé 120 tokens/session (évite la boucle sur polls vides et clarifie `wait_room` / `/comptes`) vs coût 30 tokens/session.
 - [2026-11-17] Règle Pilote de découpage en micro-tâches courtes et interdiction de réaffecter `Rédacteur actuel` pendant la phase d'analyse d'un agent sans ping + cycle d'attente ou accord explicite (`AGENTS.md` §2.3). Motif : retour utilisateur (`seq=9` sur `@agent3` Mistral Vibe encore en analyse de code). Test économique : gain estimé 150 tokens/session (évite travail perdu et réaffectations prématurées) vs coût 30 tokens/session (`G > C : oui`).
+- [2026-11-19] Routage dynamique par quotas/modèles/difficulté (N1–N4) et switch à chaud d'outil/modèle étendu au Pilote (`@pilote`) et aux agents (`@agent1..@agent3`) dans `AGENTS.md` §2.3, `agents/PILOTAGE.md` §7 et `multiagents/`. Motif : demande utilisateur explicite (`[PROP-1]`). Test économique : gain estimé 250 tokens/session + économie de quotas premium (0x/0.33x sur N1–N2, bascule auto si quota épuisé) vs coût 55 tokens/session (`G > C : oui`).
+- [2026-11-19] Spécialisation stable par session (`session_profile` : 1 modèle fixe par agent, simple vs complexe, pour éviter les switchs manuels IDE répétés) et apprentissage persistant des modèles signalés par l'humain (`apprendre_modeles`, ajout `mistral-large-4-0-3` sur Vibe) dans `AGENTS.md` §2.3, `agents/PILOTAGE.md` §7 et `multiagents/` (`[PROP-2]`). Motif : retour d'expérience live (`seq=7` Copilot, `seq=12` Vibe) et demande utilisateur. Test économique : gain estimé 200 tokens/session + suppression des allers-retours humains inutiles vs coût 45 tokens/session (`G > C : oui`).

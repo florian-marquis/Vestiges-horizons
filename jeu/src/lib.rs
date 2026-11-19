@@ -128,6 +128,11 @@ impl Priority {
 /// Type d'événement (à étendre par tranche)
 pub type EventType = u16;
 pub const EVENT_TYPE_INPUT_CHANGED: EventType = 70;
+/// Tranche B1 (spec T7-T8 tranche B1 §4.2, arbitrage 9) : événements grève en `Phase::Social`.
+pub const EVENT_TYPE_GRIEF_BOUND_REACHED: EventType = 71;
+pub const EVENT_TYPE_STRIKE_COOLDOWN_ENDED: EventType = 72;
+pub const EVENT_TYPE_STRIKE_TRIGGERED: EventType = 73;
+pub const EVENT_TYPE_STRIKE_ENDED: EventType = 74;
 
 /// Événement du noyau temporel
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,6 +160,31 @@ pub enum EventData {
         u: u16,
         p: u16,
         q: u16,
+    },
+    /// Butée de griefs atteinte (0 ou MAX) — `Phase::Social`, Priority(0)
+    GriefBoundReached {
+        entity_id: entities::EntityId,
+        bound_qmicro: i64,
+        schedule_version: u64,
+    },
+    /// Fin du répit post-grève — `Phase::Social`, Priority(1)
+    StrikeCooldownEnded {
+        entity_id: entities::EntityId,
+        schedule_version: u64,
+    },
+    /// Déclenchement de grève planifié — `Phase::Social`, Priority(2)
+    StrikeTriggered {
+        entity_id: entities::EntityId,
+        draw_index: u64,
+        strike_index: u64,
+        schedule_version: u64,
+    },
+    /// Fin de grève — `Phase::Social`, Priority(3)
+    StrikeEnded {
+        entity_id: entities::EntityId,
+        strike_index: u64,
+        cause: strike::StrikeEndCause,
+        schedule_version: u64,
     },
 }
 

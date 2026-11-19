@@ -54,32 +54,183 @@ function roleClass(sender) {
   return sender;
 }
 
-function renderSlots() {
-  const count = Math.max(1, Math.min(5, Number($("agents-count").value) || 1));
-  $("agents-count").value = String(count);
-  const box = $("slots");
-  const previous = [...box.querySelectorAll("select")].map((el) => el.value);
-  box.replaceChildren();
-  for (let index = 1; index <= count; index += 1) {
-    const label = document.createElement("label");
-    label.textContent = `Fenêtre Agent ${index}`;
-    const select = document.createElement("select");
-    select.dataset.index = String(index);
-    select.innerHTML = `
-      <option value="vscode">VS Code</option>
-      <option value="cursor">Cursor</option>
-    `;
-    select.value = previous[index - 1] || "vscode";
-    label.append(select);
-    box.append(label);
+const PROVIDER_OPTIONS = [
+  { provider: "antigravity", window: "antigravity", label: "Google Antigravity" },
+  { provider: "copilot", window: "vscode", label: "GitHub Copilot (VS Code)" },
+  { provider: "vibe", window: "vscode", label: "Mistral Vibe (VS Code)" },
+  { provider: "cursor", window: "cursor", label: "Cursor" },
+];
+
+const FALLBACK_MODELS = {
+  antigravity: [
+    { id: "gemini-pro-orchestrator-g1-pro", label: "Orchestrator (Argon)", tier: "deep", cost_hint: "quota hebdo" },
+    { id: "gemini-4-hydrogen-medium", label: "Gemini 4 Hydrogen (Medium)", tier: "standard", cost_hint: "quota 5h" },
+    { id: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash (High)", tier: "light", cost_hint: "quota 5h (éco)" },
+    { id: "claude-opus-5-5-high", label: "Claude Opus 5.5 (High)", tier: "critical", cost_hint: "quota 5h (coûteux)" },
+  ],
+  copilot: [
+    { id: "gpt-4.1", label: "GPT-4.1", tier: "standard", cost_hint: "0x (inclus)" },
+    { id: "gemini-3-flash", label: "Gemini 3 Flash", tier: "standard", cost_hint: "0.33x" },
+    { id: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "deep", cost_hint: "1x" },
+    { id: "claude-opus-4.6", label: "Claude Opus 4.6", tier: "critical", cost_hint: "3x" },
+  ],
+  vibe: [
+    { id: "devstral-small-latest", label: "Devstral Small", tier: "light", cost_hint: "éco" },
+    { id: "devstral-medium-latest", label: "Devstral Medium", tier: "standard", cost_hint: "standard" },
+    { id: "codestral-latest", label: "Codestral", tier: "standard", cost_hint: "standard" },
+    { id: "mistral-large-latest", label: "Mistral Large", tier: "deep", cost_hint: "élevé" },
+    { id: "mistral-large-4-0-3", label: "Mistral Large 4", tier: "deep", cost_hint: "élevé" },
+  ],
+  cursor: [
+    { id: "auto", label: "Auto / Cursor 2.5", tier: "standard", cost_hint: "quota maison" },
+    { id: "grok-4.7", label: "Grok 4.7", tier: "standard", cost_hint: "quota maison" },
+    { id: "claude-4.6-sonnet", label: "Claude Sonnet (Cursor)", tier: "deep", cost_hint: "quota extérieur" },
+    { id: "claude-4.6-opus", label: "Claude Opus (Cursor)", tier: "critical", cost_hint: "quota extérieur" },
+  ],
+};
+
+let providersCache = {};
+
+function windowForProvider(provider) {
+  const found = PROVIDER_OPTIONS.find((item) => item.provider === provider);
+  return found ? found.window : "vscode";
+}
+
+function modelsForProvider(provider) {
+  const snap = providersCache[provider];
+  if (snap && Array.isArray(snap.models) && snap.models.length) {
+    return snap.models;
+  }
+  return FALLBACK_MODELS[provider] || [{ id: "default", label: "Défaut", tier: "standard", cost_hint: "" }];
+}
+
+function fillModelOptions(select, provider, selectedModel) {
+  const models = modelsForProvider(provider);
+  select.replaceChildren();
+  let matched = false;
+  for (const model of models) {
+    const option = document.createElement("option");
+    option.value = model.id;
+    const extra = [model.tier, model.cost_hint].filter(Boolean).join(" · ");
+    option.textContent = extra ? `${model.label || model.id} [${extra}]` : (model.label || model.id);
+    if (selectedModel && model.id === selectedModel) {
+      matched = true;
+    }
+    select.append(option);
+  }
+  if (selectedModel && !matched) {
+    const custom = document.createElement("option");
+    custom.value = selectedModel;
+    custom.textContent = selectedModel;
+    select.append(custom);
+  }
+  if (selectedModel) {
+    select.value = selectedModel;
+  } else if (models.length) {
+    select.value = models[0].id;
   }
 }
 
-function collectSlots() {
-  return [...$("slots").querySelectorAll("select")].map((select, index) => ({
-    role: `agent${index + 1}`,
-    window: select.value,
+function buildSlotCard(role, titleText, initialProvider, initialModel) {
+  const card = document.createElement("div");
+  card.className = "slot-card";
+  card.dataset.role = role;
+
+  const header = document.createElement("div");
+  header.className = "slot-card-header";
+  header.textContent = titleText;
+
+  const providerLabel = document.createElement("label");
+  providerLabel.textContent = "Outil / fenêtre";
+  const providerSelect = document.createElement("select");
+  providerSelect.className = "slot-provider";
+  for (const opt of PROVIDER_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = opt.provider;
+    option.textContent = opt.label;
+    providerSelect.append(option);
+  }
+  providerSelect.value = initialProvider || (role === "pilote" ? "antigravity" : "copilot");
+  providerLabel.append(providerSelect);
+
+  const modelLabel = document.createElement("label");
+  modelLabel.textContent = "Modèle";
+  const modelSelect = document.createElement("select");
+  modelSelect.className = "slot-model";
+  fillModelOptions(modelSelect, providerSelect.value, initialModel);
+  modelLabel.append(modelSelect);
+
+  providerSelect.addEventListener("change", () => {
+    fillModelOptions(modelSelect, providerSelect.value, null);
+  });
+
+  card.append(header, providerLabel, modelLabel);
+  return { card, providerSelect, modelSelect };
+}
+
+function defaultProviderForAgent(index, count) {
+  if (count >= 3) {
+    if (index === 1) return "cursor";
+    if (index === 2) return "copilot";
+    if (index === 3) return "vibe";
+  }
+  if (index === 1) return "copilot";
+  if (index === 2) return "vibe";
+  return "copilot";
+}
+
+function renderPiloteSlot(forcedProvider, forcedModel) {
+  const box = $("pilote-slot");
+  const prevProv = forcedProvider || box.querySelector(".slot-provider")?.value || "antigravity";
+  const prevMod = forcedModel || (forcedProvider ? null : box.querySelector(".slot-model")?.value) || null;
+  box.replaceChildren();
+  const { card } = buildSlotCard("pilote", "Pilote (@pilote)", prevProv, prevMod);
+  box.append(card);
+}
+
+function renderSlots(forcedByRole) {
+  const count = Math.max(1, Math.min(5, Number($("agents-count").value) || 1));
+  $("agents-count").value = String(count);
+  const box = $("slots");
+  const previous = [...box.querySelectorAll(".slot-card")].map((el) => ({
+    provider: el.querySelector(".slot-provider")?.value,
+    model: el.querySelector(".slot-model")?.value,
   }));
+  box.replaceChildren();
+  for (let index = 1; index <= count; index += 1) {
+    const role = `agent${index}`;
+    const forced = forcedByRole && forcedByRole[role];
+    const prev = previous[index - 1] || {};
+    const provider = (forced && forced.provider) || prev.provider || defaultProviderForAgent(index, count);
+    const model = (forced && forced.model) || (forced ? null : prev.model) || null;
+    const { card } = buildSlotCard(role, `Agent ${index} (@${role})`, provider, model);
+    box.append(card);
+  }
+}
+
+function collectPiloteSlot() {
+  const card = $("pilote-slot").querySelector(".slot-card");
+  const provider = card?.querySelector(".slot-provider")?.value || "antigravity";
+  const model = card?.querySelector(".slot-model")?.value || "";
+  return {
+    role: "pilote",
+    provider,
+    window: windowForProvider(provider),
+    model: model || undefined,
+  };
+}
+
+function collectSlots() {
+  return [...$("slots").querySelectorAll(".slot-card")].map((card, index) => {
+    const provider = card.querySelector(".slot-provider")?.value || "copilot";
+    const model = card.querySelector(".slot-model")?.value || "";
+    return {
+      role: `agent${index + 1}`,
+      provider,
+      window: windowForProvider(provider),
+      model: model || undefined,
+    };
+  });
 }
 
 function renderList(rooms) {
@@ -101,6 +252,59 @@ function renderList(rooms) {
     button.addEventListener("click", () => selectRoom(room.id));
     item.append(button);
     list.append(item);
+  }
+}
+
+function renderActiveSlots(room) {
+  const container = $("active-slots");
+  if (!container) return;
+  container.replaceChildren();
+  const allSlots = room.all_slots || (room.pilote_slot ? [room.pilote_slot, ...(room.slots || [])] : (room.slots || []));
+  for (const slot of allSlots) {
+    const role = slot.role || "agent1";
+    const { card, providerSelect, modelSelect } = buildSlotCard(
+      role,
+      `${labelOf(role, room)} (@${role})`,
+      slot.provider || "copilot",
+      slot.model || null
+    );
+    const applyBtn = document.createElement("button");
+    applyBtn.type = "button";
+    applyBtn.className = "ghost";
+    applyBtn.textContent = `Switcher ${labelOf(role, room)}`;
+    applyBtn.disabled = room.status !== "open";
+    applyBtn.addEventListener("click", async () => {
+      try {
+        const provider = providerSelect.value;
+        const model = modelSelect.value;
+        const result = await api(`/api/rooms/${room.id}/slots`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            role,
+            provider,
+            window: windowForProvider(provider),
+            model,
+            reason: "Switch manuel depuis l'UI",
+          }),
+        });
+        if (result.handover) {
+          await api(`/api/rooms/${room.id}/messages`, {
+            method: "POST",
+            body: JSON.stringify({
+              sender: "humain",
+              text: `${result.handover} (Si besoin, basculer le sélecteur IDE sur ${model}.)`,
+            }),
+          });
+        }
+        flash(result.handover || `Slot ${role} mis à jour.`);
+        renderedKey = "";
+        await selectRoom(room.id);
+      } catch (error) {
+        flash(error.message);
+      }
+    });
+    card.append(applyBtn);
+    container.append(card);
   }
 }
 
@@ -136,7 +340,8 @@ function renderRoom(room, prompts) {
   $("close-button").disabled = room.status !== "open";
   $("send-button").disabled = room.status !== "open";
   const lastSeq = room.last_seq || 0;
-  const key = `${room.id}:${room.status}:${lastSeq}:${room.agents_count || 1}`;
+  const slotsSig = JSON.stringify(room.all_slots || room.slots || []);
+  const key = `${room.id}:${room.status}:${lastSeq}:${room.agents_count || 1}:${slotsSig}`;
   const chat = $("chat");
   if (key === renderedKey) {
     renderPresence(room);
@@ -158,6 +363,7 @@ function renderRoom(room, prompts) {
   }
   chat.scrollTop = chat.scrollHeight;
   renderPresence(room);
+  renderActiveSlots(room);
   renderPrompts(room, prompts || currentPrompts);
 }
 
@@ -171,6 +377,21 @@ function renderPresence(room) {
     item.append(badge(state.label || labelOf(agent, room)));
     item.append(document.createTextNode(state.connected ? " en attente ou vient d'écrire" : " pas encore connecté"));
     presence.append(item);
+  }
+}
+
+async function refreshProviders() {
+  try {
+    const data = await api("/api/providers");
+    const next = {};
+    for (const provider of data.providers || []) {
+      next[provider.id] = provider;
+    }
+    providersCache = next;
+    renderPiloteSlot();
+    renderSlots();
+  } catch {
+    // Repli sur FALLBACK_MODELS si indisponible.
   }
 }
 
@@ -210,9 +431,46 @@ async function copyPrompt(role) {
   }
 }
 
-$("agents-count").addEventListener("input", renderSlots);
-$("agents-count").addEventListener("change", renderSlots);
+$("agents-count").addEventListener("input", () => renderSlots());
+$("agents-count").addEventListener("change", () => renderSlots());
+renderPiloteSlot();
 renderSlots();
+
+$("apply-routing-button")?.addEventListener("click", async () => {
+  try {
+    const difficulty = $("difficulty-select")?.value || "N2";
+    const curPilote = $("pilote-slot").querySelector(".slot-provider")?.value || "antigravity";
+    const data = await api(`/api/routing?difficulty=${encodeURIComponent(difficulty)}&pilote_provider=${encodeURIComponent(curPilote)}`);
+    if (data.pilote) {
+      renderPiloteSlot(data.pilote.provider, data.pilote.model);
+    }
+    const forced = {};
+    if (data.session_profile) {
+      for (const key of ["escalation_agent", "simple_agent", "complex_agent"]) {
+        const entry = data.session_profile[key];
+        if (entry && entry.role) {
+          forced[entry.role] = entry;
+        }
+      }
+      renderSlots(forced);
+      const sp = data.session_profile;
+      flash(
+        `Profil stable (${difficulty}, cible @${data.assigned_role || "agent2"}) : ` +
+        `Pilote=${sp.pilote?.provider} (${sp.pilote?.model}) | ` +
+        `Simples=${sp.simple_agent?.role}:${sp.simple_agent?.model} | ` +
+        `Complexes=${sp.complex_agent?.role}:${sp.complex_agent?.model}.`
+      );
+    } else if (Array.isArray(data.agents) && data.agents.length) {
+      for (const item of data.agents) {
+        forced[item.role] = item;
+      }
+      renderSlots(forced);
+      flash(`Recommandation ${difficulty} appliquée : Pilote=${data.pilote?.provider} (${data.pilote?.model}).`);
+    }
+  } catch (error) {
+    flash(error.message);
+  }
+});
 
 $("new-room").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -223,11 +481,13 @@ $("new-room").addEventListener("submit", async (event) => {
       body: JSON.stringify({
         task: $("task-input").value,
         agents_count: Number($("agents-count").value) || 1,
+        pilote: collectPiloteSlot(),
         slots: collectSlots(),
       }),
     });
     $("task-input").value = "";
     currentId = created.room.id;
+    renderedKey = "";
     renderRoom(created.room, created.consignes);
     await refreshList();
     if (poll) clearInterval(poll);
@@ -277,4 +537,5 @@ $("close-button").addEventListener("click", async () => {
   }
 });
 
+refreshProviders();
 refreshList().catch((error) => flash(error.message));

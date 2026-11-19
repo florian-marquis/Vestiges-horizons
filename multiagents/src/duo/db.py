@@ -147,6 +147,13 @@ MIGRATIONS: list[tuple[int, str]] = [
         CREATE INDEX idx_status_changes_session ON status_changes(session_id, created_at);
         """,
     ),
+    (
+        3,
+        """
+        ALTER TABLE sessions ADD COLUMN vibe_cli_session TEXT;
+        ALTER TABLE sessions ADD COLUMN antigravity_cli_session TEXT;
+        """,
+    ),
 ]
 
 
@@ -275,7 +282,13 @@ class Database:
                 """,
                 (new_id(), sid, now),
             )
-            for agent in ("cursor", "copilot", "orchestrator"):
+            agents = {
+                fields["proposer"],
+                fields["critic"],
+                fields["implementer"],
+                "orchestrator",
+            }
+            for agent in sorted(agents):
                 self.conn.execute(
                     """
                     INSERT INTO agent_states(session_id, agent, status, detail, updated_at)
@@ -310,6 +323,8 @@ class Database:
             "slice_started_at",
             "cursor_cli_session",
             "copilot_cli_session",
+            "vibe_cli_session",
+            "antigravity_cli_session",
             "final_report",
             "last_error",
             "blocking_issues",

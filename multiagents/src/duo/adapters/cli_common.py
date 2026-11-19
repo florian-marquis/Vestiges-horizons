@@ -18,8 +18,11 @@ def resolve_copilot_command() -> list[str] | None:
         return [str(path)]
     node = shutil.which("node")
     loader = path.resolve().parent / "node_modules" / "@github" / "copilot" / "npm-loader.js"
-    if node and loader.exists():
-        return [node, str(loader)]
+    try:
+        if node and loader.exists():
+            return [node, str(loader)]
+    except OSError:
+        return None
     return None
 
 
@@ -38,17 +41,20 @@ def resolve_cursor_agent_command(root: Path | None = None) -> list[str] | None:
         base = Path(local) / "cursor-agent" if local else None
     if base is not None:
         versions = base / "versions"
-        if versions.is_dir():
-            candidates = sorted(
-                (path for path in versions.iterdir() if path.is_dir()),
-                key=lambda path: _cursor_version_key(path.name),
-                reverse=True,
-            )
-            for candidate in candidates:
-                node = candidate / "node.exe"
-                index = candidate / "index.js"
-                if node.is_file() and index.is_file():
-                    return [str(node), str(index)]
+        try:
+            if versions.is_dir():
+                candidates = sorted(
+                    (path for path in versions.iterdir() if path.is_dir()),
+                    key=lambda path: _cursor_version_key(path.name),
+                    reverse=True,
+                )
+                for candidate in candidates:
+                    node = candidate / "node.exe"
+                    index = candidate / "index.js"
+                    if node.is_file() and index.is_file():
+                        return [str(node), str(index)]
+        except OSError:
+            pass
     agent = shutil.which("agent")
     if agent and Path(agent).suffix.lower() == ".exe":
         return [agent]

@@ -29,7 +29,14 @@ AGENT_ACTIONS = frozenset(
 )
 LIMIT_REASONS = frozenset({"max_turns", "loop", "disagreement", "duration"})
 TERMINAL = frozenset({"succeeded", "failed", "interrupted", "needs_arbitration"})
-AGENTS = frozenset({"cursor", "copilot"})
+AGENTS = frozenset({"cursor", "copilot", "vibe", "antigravity"})
+
+CLI_SESSION_COLUMNS = {
+    "cursor": "cursor_cli_session",
+    "copilot": "copilot_cli_session",
+    "vibe": "vibe_cli_session",
+    "antigravity": "antigravity_cli_session",
+}
 
 
 def _parse_time(value: str | None) -> datetime | None:
@@ -38,8 +45,15 @@ def _parse_time(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value)
 
 
-def _other(name: str) -> str:
-    return "copilot" if name == "cursor" else "cursor"
+def _other(session: dict, name: str) -> str:
+    if name == session["proposer"]:
+        return session["critic"]
+    if name == session["critic"]:
+        return session["proposer"]
+    for candidate in (session["proposer"], session["critic"], session["implementer"]):
+        if candidate != name:
+            return candidate
+    raise ValueError(f"Pas d'autre agent pour {name}")
 
 
 class Orchestrator:
@@ -94,10 +108,8 @@ class Orchestrator:
         sid = session["id"]
         if sid not in self._adapters:
             if session["mode"] == "simulated":
-                self._adapters[sid] = {
-                    "cursor": SimulatedAdapter("cursor"),
-                    "copilot": SimulatedAdapter("copilot"),
-                }
+                names = {session["proposer"], session["critic"], session["implementer"]}
+                self._adapters[sid] = {name: SimulatedAdapter(name) for name in names}
             else:
                 self._adapters[sid] = self.live_adapters
         return self._adapters[sid]
@@ -314,7 +326,8 @@ class Orchestrator:
     async def _live_ready(self, session: dict) -> bool:
         adapters = self._adapters_for(session)
         problems: list[str] = []
-        for name in ("cursor", "copilot"):
+        needed = {session["proposer"], session["critic"], session["implementer"]}
+        for name in sorted(needed):
             adapter = adapters.get(name)
             if adapter is None:
                 problems.append(f"L'adaptateur {name} est absent.")
@@ -336,7 +349,7 @@ class Orchestrator:
         allowed = PHASE_TYPES[action]
         self._set_task_status(session_id, self._task_kind(action), "running")
         self._agent_state(session_id, speaker, "running", action)
-        self._agent_state(session_id, _other(speaker), "waiting", "en attente")
+        self._agent_state(session_id, _other(session, speaker), "waiting", "en attente")
         self.db.update_session(session_id, active_agent=speaker, phase=action)
         for message in self.db.list_messages(session_id):
             if message["delivery_state"] == "persisted":
@@ -359,8 +372,9 @@ class Orchestrator:
                 self._incident(session_id, speaker, result.error or "Échec de lancement de l'agent.")
                 return "stop"
             if result.session_id:
-                column = "cursor_cli_session" if speaker == "cursor" else "copilot_cli_session"
-                self.db.update_session(session_id, **{column: result.session_id})
+                column = CLI_SESSION_COLUMNS.get(speaker)
+                if column:
+                    self.db.update_session(session_id, **{column: result.session_id})
             payload = parse_payload(result.text)
             if payload_is_valid(payload, allowed):
                 self._record_agent_message(session_id, speaker, action, payload, result.text)
@@ -729,7 +743,8 @@ class Orchestrator:
         diff = ""
         if action in {"review", "correct", "implement"} and root.exists():
             diff = self.workspaces.diff(root)[:12000]
-        resume = session["cursor_cli_session"] if speaker == "cursor" else session["copilot_cli_session"]
+        column = CLI_SESSION_COLUMNS.get(speaker)
+        resume = session.get(column) if column else None
         roles = {
             "analyze": "proposer une solution argumentée",
             "critique": "critiquer la proposition de façon indépendante",
@@ -771,15 +786,15 @@ class Orchestrator:
         if action in {"implement", "correct"}:
             return session["implementer"]
         if action == "review":
-            return _other(session["implementer"])
+            return _other(session, session["implementer"])
         raise ValueError(action)
 
     def _recipient(self, session: dict, action: str, speaker: str) -> str:
         if action in {"implement", "correct"}:
-            return _other(session["implementer"])
+            return _other(session, session["implementer"])
         if action == "review":
             return session["implementer"]
-        return _other(speaker)
+        return _other(session, speaker)
 
     def _task_kind(self, action: str) -> str:
         if action in {"implement", "correct"}:

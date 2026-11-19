@@ -58,7 +58,7 @@ def _result(payload: dict) -> AgentResult:
 
 class SimulatedAdapter(AgentAdapter):
     def __init__(self, name: str):
-        if name not in {"cursor", "copilot"}:
+        if name not in {"cursor", "copilot", "vibe", "antigravity"}:
             raise ValueError("Agent simulé inconnu.")
         self.name = name
 

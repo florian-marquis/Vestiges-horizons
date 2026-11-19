@@ -1,5 +1,10 @@
 # Audit des capacités réelles
 
+> **OBSOLÈTE.** Instantané machine du 14 octobre 2026, antérieur à l’architecture actuelle.
+> Ne plus s’y fier pour l’auth, les providers ou les quotas.
+> Voir plutôt [README.md](../README.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CODE.md](CODE.md) et [PILOTE.md](PILOTE.md)
+> (page `/comptes`, providers Cursor / Copilot / Vibe / Antigravity).
+
 Audit réalisé sur cette machine le 14 octobre 2026, avant le choix d'architecture. Les sondes d'exécution sont rapportées à part : une présence de binaire n'est pas une intégration vérifiée.
 
 ## Environnement

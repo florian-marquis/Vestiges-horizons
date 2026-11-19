@@ -145,6 +145,39 @@ pub fn generate_t1_bytes(seed: u64, num_events: usize) -> Vec<u8> {
                             "q": q
                         })
                     }
+                    EventData::GriefBoundReached { entity_id, bound_qmicro, schedule_version } => {
+                        serde_json::json!({
+                            "type": "GriefBoundReached",
+                            "entity_id": entity_id.to_u64(),
+                            "bound_qmicro": bound_qmicro,
+                            "schedule_version": schedule_version
+                        })
+                    }
+                    EventData::StrikeCooldownEnded { entity_id, schedule_version } => {
+                        serde_json::json!({
+                            "type": "StrikeCooldownEnded",
+                            "entity_id": entity_id.to_u64(),
+                            "schedule_version": schedule_version
+                        })
+                    }
+                    EventData::StrikeTriggered { entity_id, draw_index, strike_index, schedule_version } => {
+                        serde_json::json!({
+                            "type": "StrikeTriggered",
+                            "entity_id": entity_id.to_u64(),
+                            "draw_index": draw_index,
+                            "strike_index": strike_index,
+                            "schedule_version": schedule_version
+                        })
+                    }
+                    EventData::StrikeEnded { entity_id, strike_index, cause, schedule_version } => {
+                        serde_json::json!({
+                            "type": "StrikeEnded",
+                            "entity_id": entity_id.to_u64(),
+                            "strike_index": strike_index,
+                            "cause": format!("{:?}", cause),
+                            "schedule_version": schedule_version
+                        })
+                    }
                 }
             })
         })

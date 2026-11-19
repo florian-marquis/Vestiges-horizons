@@ -15,6 +15,7 @@
     <nav class="nav">
       <a href="/" aria-current="page">Salon</a>
       <a href="/orchestre">Orchestrateur</a>
+      <a href="/comptes">Comptes</a>
     </nav>
   </header>
   <main class="layout salon">
@@ -23,6 +24,16 @@
       <form id="new-room">
         <label for="task-input">Tâche commune</label>
         <textarea id="task-input" required placeholder="Ce que le Pilote et les agents doivent accomplir ensemble."></textarea>
+        <label for="difficulty-select">Difficulté &amp; routage quotas
+          <select id="difficulty-select">
+            <option value="N1">N1 — Trivial / Audit / Doc</option>
+            <option value="N2" selected>N2 — Standard (lot isolé)</option>
+            <option value="N3">N3 — Complexe (invariants / calculs)</option>
+            <option value="N4">N4 — Critique / Escalade</option>
+          </select>
+        </label>
+        <button id="apply-routing-button" class="ghost" type="button">Conseiller outils &amp; modèles selon quotas</button>
+        <div id="pilote-slot" class="slots"></div>
         <label for="agents-count">Agents en plus du Pilote</label>
         <input id="agents-count" type="number" min="1" max="5" value="1">
         <div id="slots" class="slots"></div>
@@ -54,6 +65,10 @@
       <section>
         <h2>Présence</h2>
         <ul id="presence"></ul>
+      </section>
+      <section id="slots-section">
+        <h2>Outils &amp; modèles (Switch à chaud)</h2>
+        <div id="active-slots" class="slots"></div>
       </section>
       <section>
         <h2>Consignes</h2>

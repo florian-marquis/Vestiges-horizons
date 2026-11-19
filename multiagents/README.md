@@ -2,9 +2,11 @@
 
 Deux façons de faire collaborer Cursor et VS Code sur cette machine.
 
-**Salon (le mode à utiliser).** VS Code reste dans une fenêtre, Cursor dans une autre. Vous ouvrez un salon, vous copiez la consigne dans chaque agent, et vous leur donnez la tâche. Chaque agent appelle une attente : l'appel ne revient que lorsqu'un message de l'autre arrive. Il répond, puis attend de nouveau. L'application ne lance pas les agents et ne tape pas dans les fenêtres.
+**Salon (le mode à utiliser).** VS Code reste dans une fenêtre, Cursor dans une autre. Vous ouvrez un salon, vous copiez la consigne dans chaque agent, et vous leur donnez la tâche. Chaque agent appelle une attente : l'appel (MCP `attendre` ou `python -m duo.wait_room`) ne revient que sur un message visible ou la clôture. Il répond, puis attend de nouveau. L'application ne lance pas les agents et ne tape pas dans les fenêtres.
 
-**Orchestrateur.** L'application appelle elle-même les CLI `agent` et `copilot`, tour par tour. Utile sans les fenêtres, à condition que les deux CLI soient authentifiées. Le mode simulé fonctionne sans réseau.
+**Orchestrateur.** L'application appelle elle-même les CLI (`agent`, `copilot`, `vibe`, `agy`), tour par tour. Utile sans les fenêtres, à condition que les CLI choisies soient authentifiées. Le mode simulé fonctionne sans réseau.
+
+**Comptes.** Page `/comptes` : connexion OAuth via les CLI officielles uniquement. Les jetons restent dans le coffre OS / stores CLI ; Duo n'en copie aucun. Quotas restants en best-effort (sinon `unavailable`).
 
 Le mode simulé est opérationnel sans réseau. Les CLI réelles sont branchées, mais sur cette machine elles ne sont pas authentifiées : une session « CLI réelles » s'arrête avec la marche à suivre, elle ne simule pas un succès.
 
@@ -42,13 +44,13 @@ Copiez `config.example.toml` vers `duo.toml` pour changer le port, les limites o
 2. Choisissez le **nombre d'agents** (1 à 5) en plus du Pilote, et la fenêtre de chacun (VS Code ou Cursor).
 3. Décrivez la tâche et ouvrez le salon.
 4. Collez chaque consigne dans la fenêtre correspondante (Pilote, Agent 1, Agent 2…).
-5. Le Pilote parle en premier et assigne avec `@agent1`, `@agent2`, etc. Les agents mettent à jour `etat.md` et n'écrivent le code que s'ils sont le rédacteur actuel.
+5. Le Pilote parle en premier et assigne avec `@agent1`, `@agent2`, etc. Seul le Pilote met à jour `etat.md` (lecture seule pour les agents) ; les agents n'écrivent le code que s'ils sont désignés comme rédacteur actuel.
 6. L'attente dure jusqu'à 90 s ; si elle expire sans message, l'agent doit la rappeler immédiatement (presque pas de tokens).
 7. Un message `STOP` demande un bilan. Clôturer empêche ensuite toute nouvelle publication.
 
 Si un agent termine son tour trop tôt : « Continue. Rappelle l'attente du salon. »
 
-Les outils MCP `lire_salon`, `dire` et `attendre` sont déclarés pour ce dépôt. L'identité vient du jeton de la consigne. La consigne fonctionne aussi sans MCP, par un petit programme Python.
+Les outils MCP `lire_salon`, `dire` et `attendre` sont déclarés pour ce dépôt. L'identité vient du jeton de la consigne. `attendre` (et `python -m duo.wait_room` sans MCP) enchaîne les polls jusqu'à un message ou la clôture.
 
 ## Orchestrateur
 
@@ -60,27 +62,20 @@ Les outils MCP `lire_salon`, `dire` et `attendre` sont déclarés pour ce dépô
 
 Les profils simulés (collaboration, désaccord, boucle, réponse invalide, panne, délai, tests en échec) servent à observer l'orchestrateur sans quota.
 
-En mode **CLI réelles**, les deux outils doivent être installés et authentifiés. L'implémentation, si elle est autorisée, n'écrit que dans `data/sandboxes/<session>` ou dans un worktree Git confirmé explicitement. Les deux agents n'écrivent pas en même temps.
+En mode **CLI réelles**, les providers choisis (proposant / critique / implémenteur) doivent être installés et authentifiés. L'implémentation, si elle est autorisée, n'écrit que dans `data/sandboxes/<session>` ou dans un worktree Git confirmé explicitement. Les agents n'écrivent pas en même temps.
 
-## Authentification encore nécessaire
+## Authentification (OAuth CLI)
 
-Ces deux sondes ont été exécutées. Elles ne sont pas des succès d'agent.
+Préférez la page [http://127.0.0.1:8765/comptes](http://127.0.0.1:8765/comptes) : Duo lance la CLI et vous guide. Équivalents manuels :
 
-**Cursor.** Le CLI officiel est installé (`%LOCALAPPDATA%\cursor-agent`). `agent status` répond `Not logged in`. Ouvrez un nouveau terminal (pour que `agent` soit sur le PATH) puis :
+| Provider | Login CLI | Quotas |
+| --- | --- | --- |
+| Cursor | `agent login` | usage-summary si jeton CLI local lisible, sinon unavailable |
+| Copilot | `copilot login` | `gh api /copilot_internal/user` si `gh` auth, sinon unavailable |
+| Mistral Vibe | `vibe --setup` | souvent unavailable → console Mistral |
+| Antigravity | `agy` (OAuth navigateur) | souvent unavailable → `/usage` dans agy |
 
-```bat
-agent login
-```
-
-Ou définissez `CURSOR_API_KEY` sans la coller dans un fichier du dépôt. Duo ne lit pas la valeur pour l'afficher. Tant que `agent status` ne confirme pas la session, le mode réel refuse de démarrer cet agent.
-
-**GitHub Copilot.** Le CLI 1.0.47 est installé. Un appel `-p` non interactif s'est terminé par le code 1 : `No authentication information found`.
-
-```bat
-copilot login
-```
-
-Autre possibilité : un jeton fin (permission Copilot Requests) dans `COPILOT_GITHUB_TOKEN`. Les jetons classiques `ghp_` sont refusés par ce CLI. `gh` n'est pas installé sur cette machine.
+Duo ne stocke aucun secret. Métadonnées non secrètes seulement (`dernier contrôle`, statut).
 
 ## Tests
 
@@ -89,7 +84,7 @@ set PYTHONPATH=src
 .venv\Scripts\python -m pytest
 ```
 
-La dernière exécution locale a donné 32 tests réussis. La suite couvre la persistance, la reprise, les tours automatiques, les réponses invalides, les pannes, les délais, l'arrêt, les boucles, le plafond de tours, les désaccords, la convergence, la sécurité des commandes et l'absence d'un agent. Les tests d'orchestration utilisent les adaptateurs simulés.
+La dernière exécution locale a donné 47 tests réussis. La suite couvre la persistance, la reprise, les tours automatiques, les réponses invalides, les pannes, les délais, l'arrêt, les boucles, le plafond de tours, les désaccords, la convergence, la sécurité des commandes, les providers OAuth/quotas et l'absence d'un agent. Les tests d'orchestration utilisent les adaptateurs simulés.
 
 ## Limites
 

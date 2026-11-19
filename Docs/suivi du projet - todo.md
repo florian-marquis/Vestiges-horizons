@@ -6,7 +6,7 @@ type: "text/markdown"
 
 # Vestige : Horizon · Suivi du projet (todo)
 
-*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 17 novembre 2026.*
+*Document de pilotage. Fait / en cours / à faire. Mis à jour à chaque session. Statut au 19 novembre 2026.*
 
 ---
 
@@ -31,7 +31,7 @@ type: "text/markdown"
 
 ## 2. En cours (réflexion ouverte)
 
-- **Correctif T7-T8 v1.3 (`feat/t7-t8-griefs-realistes`)** : Lots A à G implémentés et vérifiés techniquement (`d4313dd`, `85e4149`, `751ba87`, `eb56c45`, `bf6f41b` G1 hausse +25 %/j, `6501e43` G2 `p` sur taux d'effort `e0 = 600`) selon `jeu/Docs/spec/T7-T8 correctif - spec v1.3.md` (partage `R/N` et `u` post-repas, budget reste-à-vivre lu sur le panier `self.panier`, allocation Mode A prorata + plus grand reste + `EntityId`, courbe de prix sous 5 j plafond relevé à `×6` soit `600`, équation `v7.8.2`, scénarios `S0–S4` graine 42 sur 3 650 j). En attente de validation humaine (Convention 34) sur les résultats du Lot G (S0–S4 après G1 + G2) avant toute ouverture de la tranche B (grèves, risque, I8 et route candidate « matelas de sécurité / ch. 14 » hors tranche).
+- **Tranche B1 — Grève par risque cumulé (`feat/t7-t8-greve-risque-cumule` depuis `e10b60e`)** : Tranche A2 (`feat/t7-t8-griefs-realistes`, Lots A–H dont `S0b` et `S0–S4`, `jeu/Docs/spec/T7-T8 correctif - spec v1.3.md`) validée par l'humain le 19/11/2026. Spec Tranche B1 verrouillée dans `jeu/Docs/spec/T7-T8 tranche B1 - spec.md` (Option A provisoire sans perte de salaire, 9 arbitrages intégrés, 5 commits atomiques, retrait de `benchmark_t7_t8`, lectures `S0b`/`S1`/`S2`/`S4`). Ticket séparé créé pour `credit.rs` (`jeu/Docs/tickets/credit-repayment-default-fix.md`, à ne pas corriger en B1). Exécution B1 en salon Duo avant validation humaine des lectures et ouverture B2/B3 (`labor.rs` / `Q(a)`).
 - **Révoltes/révolutions** : feuille de route de 6 questions à trancher avant cadrage — (1) grain de la légitimité [racine], (2) sortie de la révolte de quartier (émeute), (3) pouvoir central organisation ou mur, (4) économie politique de la révolte, (5) conséquences de la victoire, (6) calibrage de rareté.
 - **Économie spatiale** : 6 questions ouvertes — (1) première instance de P2 : ville ou station [intuition : ville], (2) qui construit les mégastructures, (3) FTL jamais ? à confirmer, (4) économie des ressources (astéroïdes vs surfaces), (5) statut de la place d'échange [intuition : infrastructure-institution + firmes], (6) calibrage des coûts d'accès.
 
@@ -50,8 +50,8 @@ type: "text/markdown"
 ### Développement en cours / prochaines étapes
 9. **Tranche 1 — noyau temporel** : ordre de mission prêt (spec section 13 + mission section 29). Rien à spécifier de plus ; **implémentée dans src/lib.rs**.
 10. **Tranches 2 à 6** : **implémentées** (entities.rs, time.rs, firm.rs, market.rs, credit.rs, labor.rs).
-11. **Tranche 7 — Salaires réels et griefs** : correctif T7-T8 v1.3 (`src/griefs.rs`, `src/salary.rs`, `src/inputs.rs`, `src/household.rs`, `src/bin/quartier_10ans.rs`) implémenté et vérifié techniquement (`S0–S4`) ; en attente de validation humaine avant la tranche B (la concordance I8 `G + δ` reste ouverte pour la tranche D).
-12. **Tranche 8 — Basculements** : du code et des tests existent (`src/strike.rs`, `tests/test_tranche8.rs`), mais ils ne ferment pas le contrat actuel ; la validation du risque et des grèves reste ouverte après la revue humaine de la tranche B.
+11. **Tranche 7 — Salaires réels et griefs** : correctif T7-T8 v1.3 (`src/griefs.rs`, `src/salary.rs`, `src/inputs.rs`, `src/household.rs`, `src/bin/quartier_10ans.rs`) **validé** (Tranche A2, Lots A–H avec `S0b`). Concordance I8 `G + δ` ouverte pour la tranche D.
+12. **Tranche 8 — Basculements** : Tranche B1 spécifiée dans `jeu/Docs/spec/T7-T8 tranche B1 - spec.md` et en cours d'exécution sur `feat/t7-t8-greve-risque-cumule` (moteur événementiel entier, retrait de `taux_risque`/`seuil_risque` et de `benchmark_t7_t8`, lectures `S0b`/`S1`/`S2`/`S4`) ; couplage `labor.rs` et concessions `Q(a)` réservés à B2/B3 après validation humaine des lectures B1.
 13. Tranches 9-11 (vie sociale, suite headless, P1b scène) : à lancer après clôture correctif T7-T8 ; 11a headless avant 11b rendu.
 14. **Écarts d'implémentation à traiter** (signalés, non corrigés dans cette session) :
     - `TimeBudget` (`src/time.rs`) tient des durées par usage ; la spec §31.2 demande 32 demi-heures positionnées (Usage + lieu).

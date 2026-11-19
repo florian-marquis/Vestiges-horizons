@@ -19,7 +19,7 @@ description: >-
 ## Lancer le serveur
 
 ```bat
-cd /d "C:\Users\Florian\Nextcloud\perso\ia\Vestiges horizons\multiagents"
+cd /d "C:\dev\vestiges-horizons\multiagents"
 start.bat
 ```
 
@@ -27,15 +27,15 @@ Si `.venv` n'existe pas, `start.bat` le crée. Vérifier ensuite http://127.0.0.
 
 ## Workflow Pilote sur ce projet
 
-1. **Obligatoire à chaque étape de codage sur `jeu/`** : si aucun salon actif n'est ouvert pour la tâche, démarrer Duo (`multiagents/`), créer/réouvrir un salon standard à 3 agents + Pilote, publier le premier message Pilote et **demander à l'utilisateur d'y connecter les autres agents** avec leurs consignes.
-2. Workspace ouvert = **Vestiges horizons** (dossier `jeu/` = code du jeu).
-3. Salon standard à **3 agents** + Pilote :
-   - **Pilote** : Architecte (`vscode`, lecture seule sur `jeu/src/`).
+1. **Vérifier quotas & modèles avant ouverture** : appeler `swarm(action="models", all=True)` côté Antigravity puis MCP `etat_quotas_modeles` (ou `GET /api/routing?difficulty=N1..N4`) pour choisir le couple `(outil, modèle)` optimal pour `@pilote` et chaque `@agentN`.
+2. **Obligatoire à chaque étape de codage sur `jeu/`** : si aucun salon actif n'est ouvert pour la tâche, démarrer Duo (`multiagents/`), créer/réouvrir un salon standard à 3 agents + Pilote (`POST /api/rooms` avec `pilote` et `slots`), publier le premier message Pilote et **indiquer explicitement à l'utilisateur quel outil et quel modèle brancher sur `@pilote` et chaque `@agentN`** avant de lui demander d'y connecter les agents.
+3. Workspace ouvert = **Vestiges horizons** (dossier `jeu/` = code du jeu).
+4. Salon standard à **3 agents** + Pilote :
+   - **Pilote (`@pilote`)** : Architecte (par défaut `antigravity` `Orchestrator (Argon)`, switchable à chaud vers `copilot`/`vibe`/`cursor` via `changer_slot` ou `PATCH /api/rooms/{id}/slots` selon quotas/difficulté ; lecture seule sur `jeu/src/`).
    - **Agent 1 (`@agent1`)** : Cursor (`cursor`) — **secours / escalade uniquement** (quand quotas des autres épuisés ou tâche trop complexe).
-   - **Agent 2 (`@agent2`)** : GitHub Copilot Fusion (`vscode`) — principal.
-   - **Agent 3 (`@agent3`)** : Mistral Vibe (`vscode`) — principal.
-4. Utiliser `@agent3` et `@agent2` en parallèle si pertinent (un seul `Rédacteur actuel` sur le code), ou jusqu'à épuisement de quota avant bascule. Préserver les quotas Cursor (`@agent1`).
-5. Coller la consigne **Pilote** ici ; coller les consignes Agent 1..3 dans leurs fenêtres ouvertes sur `jeu/` (ou la racine selon le rôle).
+   - **Agent 2 (`@agent2`)** : GitHub Copilot (`vscode`) — principal (`GPT-4.1` 0x sur N1/audit, `Gemini 3 Flash` 0.33x sur N2, `Claude Sonnet 4.6` 1x sur N3).
+   - **Agent 3 (`@agent3`)** : Mistral Vibe (`vscode`) — principal (`devstral-small/medium-latest`, `mistral-large-latest`).
+5. **Switch à chaud** : si la difficulté change ou qu'un quota (y compris celui du Pilote) tombe bas, appeler `changer_slot` / `PATCH /api/rooms/{id}/slots`, mettre à jour `etat.md` et demander à l'utilisateur de brancher le nouveau modèle/outil (reprise du Pilote sur `etat.md` + `last_seq`).
 6. Travailler via le salon : `@agent2` / `@agent3`, `etat.md`, un seul `Rédacteur actuel` à la fois.
 7. Attente opaque : `attendre` (MCP) et `python -m duo.wait_room` (avec `PYTHONPATH=multiagents/src`) enchaînent les polls HTTP 90 s et ne reviennent que sur un message ou la clôture ; si l'IDE coupe l'outil, rappeler immédiatement avec le même `SEQ`.
 
@@ -44,7 +44,9 @@ Si `.venv` n'existe pas, `start.bat` le crée. Vérifier ensuite http://127.0.0.
 Créer le salon standard (exemple) :
 
 ```bat
-curl -s -X POST http://127.0.0.1:8765/api/rooms -H "Content-Type: application/json" -H "X-Duo-Request: 1" -d "{\"task\":\"...\",\"agents_count\":3,\"slots\":[{\"role\":\"agent1\",\"window\":\"cursor\"},{\"role\":\"agent2\",\"window\":\"vscode\"},{\"role\":\"agent3\",\"window\":\"vscode\"}]}"
+curl -s "http://127.0.0.1:8765/api/routing?difficulty=N2&pilote_provider=antigravity"
+curl -s -X POST http://127.0.0.1:8765/api/rooms -H "Content-Type: application/json" -H "X-Duo-Request: 1" -d "{\"task\":\"...\",\"agents_count\":3,\"pilote\":{\"provider\":\"antigravity\",\"window\":\"antigravity\",\"model\":\"gemini-pro-orchestrator-g1-pro\"},\"slots\":[{\"role\":\"agent1\",\"window\":\"cursor\",\"provider\":\"cursor\",\"model\":\"auto\"},{\"role\":\"agent2\",\"window\":\"vscode\",\"provider\":\"copilot\",\"model\":\"gpt-4.1\"},{\"role\":\"agent3\",\"window\":\"vscode\",\"provider\":\"vibe\",\"model\":\"devstral-medium-latest\"}]}"
+curl -s -X PATCH http://127.0.0.1:8765/api/rooms/ROOM_ID/slots -H "Content-Type: application/json" -H "X-Duo-Request: 1" -d "{\"role\":\"pilote\",\"provider\":\"copilot\",\"model\":\"claude-sonnet-4.6\",\"reason\":\"Quota bas\"}"
 ```
 
 Attendre / publier : suivre `python -m duo.wait_room --base http://127.0.0.1:8765 ROOM_ID TOKEN SEQ` (avec `PYTHONPATH=multiagents/src`) et la commande de publication dans la consigne Duo.

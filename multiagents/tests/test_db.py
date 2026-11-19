@@ -47,8 +47,9 @@ def test_migrations_apply_on_previous_schema(tmp_path: Path):
     conn.commit()
     conn.close()
     db = Database(path)
-    assert db.version == 2
+    assert db.version == 3
     db.conn.execute("SELECT notes FROM sessions").fetchall()
+    db.conn.execute("SELECT vibe_cli_session, antigravity_cli_session FROM sessions").fetchall()
     db.close()
 
 

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Duo — Comptes OAuth</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Authentification CLI</p>
+      <h1>Comptes</h1>
+    </div>
+    <nav class="nav">
+      <a href="/">Salon</a>
+      <a href="/orchestre">Orchestrateur</a>
+      <a href="/comptes" aria-current="page">Comptes</a>
+    </nav>
+  </header>
+  <main class="layout comptes">
+    <section class="panel comptes-intro">
+      <p class="lead">
+        Duo lance uniquement les CLI officielles (<code>agent login</code>, <code>copilot login</code>,
+        <code>vibe --setup</code>, <code>agy</code>). Les jetons restent dans le coffre OS / stores CLI —
+        jamais dans SQLite ni dans le dépôt.
+      </p>
+      <p id="flash" class="flash" role="status"></p>
+      <button id="refresh-all" type="button">Rafraîchir tout</button>
+    </section>
+    <section class="panel">
+      <div id="provider-list" class="provider-list"></div>
+    </section>
+  </main>
+  <script src="/static/comptes.js"></script>
+</body>
+</html>

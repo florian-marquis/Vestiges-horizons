@@ -29,8 +29,11 @@ def test_api_rejects_cross_site_and_missing_header(tmp_path: Path):
         assert health.status_code == 403
         ok = client.get("/api/health")
         assert ok.status_code == 200
-        assert "cursor" in ok.json()["adapters"]
-        assert "copilot" in ok.json()["adapters"]
+        adapters = ok.json()["adapters"]
+        assert "cursor" in adapters
+        assert "copilot" in adapters
+        assert "vibe" in adapters
+        assert "antigravity" in adapters
 
 
 def test_api_simulated_session_export_and_history(tmp_path: Path):

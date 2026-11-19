@@ -4,9 +4,11 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 
-const MAX_GRIEFS_QMICRO: i64 = 400_000_000;
+/// Plafond de G en quarts de micro-point (100 pts), exposé pour la Tranche B1.
+pub const MAX_GRIEFS_QMICRO: i64 = 400_000_000;
 const MAX_INPUT: i64 = 1_000;
-const SLOTS_PER_DAY: i128 = 4;
+/// Créneaux par jour (365 × 4 = 1 460 créneaux par an).
+pub const SLOTS_PER_DAY: u64 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GriefEntree {
@@ -126,7 +128,7 @@ impl GriefsState {
         }
 
         let delta_slots = (i128::from(target.day) - i128::from(self.last_update.day))
-            * SLOTS_PER_DAY
+            * i128::from(SLOTS_PER_DAY)
             + i128::from(target.seq)
             - i128::from(self.last_update.seq);
         let delta = i128::from(self.slope_micro_points_per_day()) * delta_slots;
@@ -182,6 +184,38 @@ impl GriefsState {
 
     pub fn griefs_points(&self) -> i64 {
         self.g_qmicro / 4_000_000
+    }
+
+    /// Prochain instant où `G` atteint une butée (`0` ou `MAX_GRIEFS_QMICRO`),
+    /// à partir de l'état courant et de la pente courante (par créneau).
+    ///
+    /// Méthode pure (lecture seule) : ne modifie pas l'état.
+    /// **Arrondi déclaré (règle 26)** : plafond entier sur `distance / |slope|`
+    /// (en créneaux). Retourne `None` si la pente est nulle (aucune butée atteignable).
+    pub fn next_bound_timestamp(&self) -> Option<(Timestamp, i64)> {
+        // NB : `slope_micro_points_per_day` est en réalité la pente par créneau
+        // (elle est multipliée par `delta_slots` dans `advance_to`).
+        let s = self.slope_micro_points_per_day();
+        if s == 0 {
+            return None;
+        }
+        let (bound, distance) = if s > 0 {
+            (MAX_GRIEFS_QMICRO, MAX_GRIEFS_QMICRO - self.g_qmicro)
+        } else {
+            (0, self.g_qmicro)
+        };
+        if distance <= 0 {
+            return Some((self.last_update, bound));
+        }
+        // Plafond entier (arrondi déclaré, règle 26).
+        let k_slots = (distance + s.abs() - 1) / s.abs();
+        let spd = SLOTS_PER_DAY as i64;
+        let total = self.last_update.day * spd + i64::from(self.last_update.seq) + k_slots;
+        let ts = Timestamp::new(
+            total.div_euclid(spd),
+            (total.rem_euclid(spd)) as u32,
+        );
+        Some((ts, bound))
     }
 }
 

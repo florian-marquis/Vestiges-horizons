@@ -191,138 +191,20 @@ fn test_t7_4_integration_evenementielle() {
 }
 
 // ============================================================================
-// T7.5 : Seuil de risque cumulé
-// ============================================================================
-
-/// T7.5 - Le taux de risque cumulé ne franchit le seuil que si le salaire réel est bas
-#[test]
-fn test_t7_5_seuil_risque_cumule() {
-    let mut manager = SalaireReelEtGriefsManager::new();
-    
-    let entity_id = EntityId::new(EntityType::Cohort, 1);
-    manager.ajouter_entite(entity_id);
-    
-    // Configurer seuil de risque à 50
-    if let Some(e) = manager.entites.get_mut(&entity_id) {
-        e.set_seuil_risque(50);
-    }
-    
-    // Cas 1 : Salaire réel élevé, griefs bas → seuil non franchi
-    manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
-    manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
-    manager.mettre_a_jour_salaire_horaire(entity_id, 5000); // Salaire très élevé
-    manager.mettre_a_jour_heures(entity_id, 8);
-    
-    manager.mettre_a_jour_entrees_griefs(entity_id, 0, 0, 1_000, Timestamp::new(0, 0)).unwrap();
-    
-    let entite = manager.entites.get(&entity_id).unwrap();
-    assert!(!entite.seuil_franchi(), 
-        "T7.5 cas 1 : seuil non franchi avec salaire réel élevé");
-    
-    // Cas 2 : Salaire réel bas, griefs élevés → seuil franchi
-    manager.mettre_a_jour_salaire_horaire(entity_id, 500); // Salaire bas
-    
-    manager.mettre_a_jour_entrees_griefs(entity_id, 500, 500, 0, Timestamp::new(0, 0)).unwrap();
-    
-    let entite = manager.entites.get(&entity_id).unwrap();
-    assert!(entite.seuil_franchi(), 
-        "T7.5 cas 2 : seuil franchi avec salaire réel bas et griefs élevés");
-}
-
-// ============================================================================
 // T7.6 : Grève seulement si salaire réel bas (choc 8)
 // ============================================================================
 
-/// T7.6 - Grève seulement si salaire réel bas
-/// Choc 8 : choc combiné (chocs 2 + 7) doit produire une grève explicable
-/// La grève ne doit pas survenir si le salaire réel reste suffisamment élevé
-#[test]
-fn test_t7_6_greve_seulement_si_salaire_reel_bas() {
-    let mut manager = SalaireReelEtGriefsManager::new();
-    
-    // Cas A : Salaire réel reste élevé malgré les chocs → PAS de grève
-    let entity_a = EntityId::new(EntityType::Cohort, 1);
-    manager.ajouter_entite(entity_a);
-    
-    // Panier initial
-    manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
-    manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
-    
-    // Salaire très élevé pour compenser les chocs
-    manager.mettre_a_jour_salaire_horaire(entity_a, 10000); // 100€/heure
-    manager.mettre_a_jour_heures(entity_a, 8);
-    
-    // Appliquer choc 2 : offre nourriture baisse de moitié → prix ×2
-    manager.mettre_a_jour_panier(PanierComposante::Nourriture, 2000);
-    
-    // Appliquer choc 7 : prix +50% supplémentaire
-    manager.mettre_a_jour_panier(PanierComposante::Nourriture, 3000);
-    
-    // Recalculer salaire réel après changement de panier
-    let salaire_reel_a = manager.get_salaire_reel(entity_a).unwrap();
-    
-    // Même avec les chocs, le salaire réel reste élevé
-    // Car le salaire horaire est très élevé (10000 centimes = 100€/heure)
-    // Panier = 3000 + 2000 = 5000 centimes = 50€
-    // Salaire journalier = 10000 * 8 = 80000 centimes = 800€
-    // Salaire réel = (80000 * 100) / 5000 = 1600%
-    
-    // Mettre à jour les entrées de griefs - TOUTES EN UNE FOIS pour éviter l'accumulation
-    manager.mettre_a_jour_entrees_griefs(entity_a, 100, 300, 500, Timestamp::new(0, 0)).unwrap();
-    
-    let entite_a = manager.entites.get(&entity_a).unwrap();
-    // Avec salaire réel très élevé, le seuil ne doit pas être franchi
-    assert!(!entite_a.seuil_franchi(), 
-        "T7.6 cas A : pas de grève avec salaire réel élevé malgré les chocs (griefs={}, salaire_reel={}, taux={}, seuil={})",
-        entite_a.griefs.griefs_points(), entite_a.salaire_reel, entite_a.taux_risque, entite_a.seuil_risque);
-    
-    
-    // Cas B : Salaire réel bas → grève
-    let entity_b = EntityId::new(EntityType::Cohort, 2);
-    manager.ajouter_entite(entity_b);
-    
-    // Salaire bas
-    manager.mettre_a_jour_salaire_horaire(entity_b, 500); // 5€/heure
-    manager.mettre_a_jour_heures(entity_b, 8);
-    
-    // Même panier après chocs
-    manager.mettre_a_jour_panier(PanierComposante::Nourriture, 3000);
-    manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
-    
-    let salaire_reel_b = manager.get_salaire_reel(entity_b).unwrap();
-    
-    // Salaire journalier = 500 * 8 = 4000 centimes = 40€
-    // Panier = 3000 + 2000 = 5000 centimes = 50€
-    // Salaire réel = (4000 * 100) / 5000 = 80%
-    
-    // Mettre à jour les entrées de griefs - TOUTES EN UNE FOIS
-    manager.mettre_a_jour_entrees_griefs(entity_b, 500, 800, 200, Timestamp::new(0, 0)).unwrap();
-    
-    let entite_b = manager.entites.get(&entity_b).unwrap();
-    // Avec salaire réel bas et griefs élevés, le seuil doit être franchi
-    assert!(entite_b.seuil_franchi(), 
-        "T7.6 cas B : grève avec salaire réel bas");
-    
-    // Vérification : salaire réel de A >> salaire réel de B
-    assert!(salaire_reel_a > salaire_reel_b * 10, 
-        "Le salaire réel du cas A doit être beaucoup plus élevé que celui du cas B");
-}
-
 // ============================================================================
-// T7.7 : Validation complète - tous invariants verts
+// T7.5 : Validation des tests T7.1 à T7.4
 // ============================================================================
 
-/// T7.7 - Validation complète de la tranche 7
-/// Tous les tests T7.1-T7.6 passent, tous les invariants sont respectés
+/// Validation des tests T7.1-T7.4 conservés après retrait de l'ancienne règle de seuil.
 #[test]
-fn test_t7_7_validation_complete() {
-    // Exécuter tous les tests individuellement pour s'assurer qu'ils passent
+fn test_t7_validation_des_griefs_et_salaires() {
     test_t7_1_concordance_i8();
     test_t7_2_choc_7();
     test_t7_3_choc_11_complet();
     test_t7_4_integration_evenementielle();
-    test_t7_5_seuil_risque_cumule();
-    test_t7_6_greve_seulement_si_salaire_reel_bas();
 }
 
 #[test]

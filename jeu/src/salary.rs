@@ -78,12 +78,6 @@ pub struct SalaireReelEtGriefs {
     pub salaire_reel: u64,
     /// État canonique de griefs, partagé par tous les calculs T7
     pub griefs: GriefsState,
-    /// Taux de risque cumulé (0-100)
-    pub taux_risque: i64,
-    /// Seuil de risque (0-100)
-    pub seuil_risque: i64,
-    /// Date de franchissement du seuil (jour)
-    pub date_franchissement: Option<i64>,
 }
 
 impl SalaireReelEtGriefs {
@@ -95,9 +89,6 @@ impl SalaireReelEtGriefs {
             panier: Panier::new(),
             salaire_reel: 0,
             griefs: GriefsState::new(entite),
-            taux_risque: 0,
-            seuil_risque: 50, // Seuil par défaut
-            date_franchissement: None,
         }
     }
     
@@ -158,7 +149,6 @@ impl SalaireReelEtGriefs {
     /// Avance les griefs jusqu'à l'horodatage logique.
     pub fn mettre_a_jour_griefs(&mut self, timestamp: Timestamp) -> Result<(), GriefsError> {
         self.griefs.advance_to(timestamp)?;
-        self.calculer_taux_risque();
         Ok(())
     }
     
@@ -170,7 +160,6 @@ impl SalaireReelEtGriefs {
         timestamp: Timestamp,
     ) -> Result<(), GriefsError> {
         self.griefs.set_input_at(entree, valeur, timestamp)?;
-        self.calculer_taux_risque();
         Ok(())
     }
 
@@ -183,36 +172,7 @@ impl SalaireReelEtGriefs {
         timestamp: Timestamp,
     ) -> Result<(), GriefsError> {
         self.griefs.set_inputs_at(u, p, q, timestamp)?;
-        self.calculer_taux_risque();
         Ok(())
-    }
-    
-    /// Calcule le taux de risque (fonction de G, salaire réel, moyens de la cohorte)
-    /// §19.2 : le taux de risque cumulé ne franchit le seuil que si le salaire réel est bas
-    pub fn calculer_taux_risque(&mut self) {
-        // Formule simplifiée pour T7.5 : taux_risque = G + max(0, 100 - salaire_reel/10)
-        // Plus le salaire réel est bas, plus le taux de risque est élevé
-        // G est en [0, 100], salaire_reel est en pourcentage
-        let salaire_factor = (100i64 - (self.salaire_reel / 10) as i64).max(0);
-        self.taux_risque = (self.griefs.griefs_points() + salaire_factor).clamp(0, 100);
-        
-        // Vérifier si le seuil est franchi
-        if self.taux_risque >= self.seuil_risque {
-            self.date_franchissement = Some(0); // À implémenter : date exacte
-        } else {
-            self.date_franchissement = None;
-        }
-    }
-    
-    /// Vérifie si le seuil de risque est franchi
-    pub fn seuil_franchi(&self) -> bool {
-        self.taux_risque >= self.seuil_risque
-    }
-    
-    /// Met à jour le seuil de risque
-    pub fn set_seuil_risque(&mut self, seuil: i64) {
-        self.seuil_risque = seuil.clamp(0, 100);
-        self.calculer_taux_risque();
     }
 }
 
@@ -629,35 +589,4 @@ mod tests {
         assert_eq!(manager.get_griefs_micro_points(entite), Some(340_000));
     }
     
-    /// §19.2 T7.5 : Seuil de risque (entrées)
-    /// → le taux de risque cumulé ne franchit le seuil que si le salaire réel est bas
-    #[test]
-    fn test_t7_5_seuil_risque() {
-        let mut manager = SalaireReelEtGriefsManager::new();
-        
-        let entite = EntityId::new(crate::entities::EntityType::Cohort, 1);
-        manager.ajouter_entite(entite);
-        
-        // Configuration : seuil de risque à 50
-        if let Some(e) = manager.entites.get_mut(&entite) {
-            e.set_seuil_risque(50);
-        }
-        
-        // Cas 1 : Salaire réel élevé, griefs bas → seuil non franchi
-        manager.mettre_a_jour_panier(PanierComposante::Nourriture, 1000);
-        manager.mettre_a_jour_panier(PanierComposante::Logement, 2000);
-        manager.mettre_a_jour_salaire_horaire(entite, 5000); // Salaire élevé
-        manager.mettre_a_jour_heures(entite, 8);
-        
-        manager.mettre_a_jour_entrees_griefs(entite, 0, 0, 1_000, Timestamp::new(0, 0)).unwrap();
-        
-        assert!(!manager.entites[&entite].seuil_franchi());
-        
-        // Cas 2 : Salaire réel bas, griefs élevés → seuil franchi
-        manager.mettre_a_jour_salaire_horaire(entite, 500); // Salaire bas
-        
-        manager.mettre_a_jour_entrees_griefs(entite, 500, 500, 0, Timestamp::new(0, 0)).unwrap();
-        
-        assert!(manager.entites[&entite].seuil_franchi());
-    }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Duo — Cursor et Copilot</title>
+  <title>Duo — Orchestrateur</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -15,10 +15,13 @@
     <nav class="nav">
       <a href="/">Salon</a>
       <a href="/orchestre" aria-current="page">Orchestrateur</a>
+      <a href="/comptes">Comptes</a>
     </nav>
     <div class="health" id="health">
       <span class="pill" id="health-cursor">Cursor…</span>
       <span class="pill" id="health-copilot">Copilot…</span>
+      <span class="pill" id="health-vibe">Vibe…</span>
+      <span class="pill" id="health-antigravity">Antigravity…</span>
     </div>
   </header>
   <main class="layout">
@@ -45,13 +48,28 @@
           </select>
           <div class="roles">
             <label>Proposant
-              <select id="proposer"><option value="cursor">Cursor</option><option value="copilot">Copilot</option></select>
+              <select id="proposer">
+                <option value="cursor">Cursor</option>
+                <option value="copilot">Copilot</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
             </label>
             <label>Critique
-              <select id="critic"><option value="copilot">Copilot</option><option value="cursor">Cursor</option></select>
+              <select id="critic">
+                <option value="copilot">Copilot</option>
+                <option value="cursor">Cursor</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
             </label>
             <label>Implémenteur
-              <select id="implementer"><option value="cursor">Cursor</option><option value="copilot">Copilot</option></select>
+              <select id="implementer">
+                <option value="cursor">Cursor</option>
+                <option value="copilot">Copilot</option>
+                <option value="vibe">Vibe</option>
+                <option value="antigravity">Antigravity</option>
+              </select>
             </label>
           </div>
           <label for="max-turns">Tours maximum <input id="max-turns" type="number" min="1" max="50" value="8"></label>
@@ -90,6 +108,11 @@
       <section>
         <h2>Agents</h2>
         <ul id="agent-state"></ul>
+      </section>
+      <section>
+        <h2>Quotas</h2>
+        <ul id="quota-panel"></ul>
+        <button id="refresh-quotas" type="button" class="ghost">Rafraîchir quotas</button>
       </section>
       <section>
         <h2>Tâches</h2>

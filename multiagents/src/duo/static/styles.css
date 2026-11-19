@@ -7,6 +7,8 @@
   --muted: #a3b39a;
   --cursor: #7dcea0;
   --copilot: #d7b4f3;
+  --vibe: #f0a36b;
+  --antigravity: #7ab8e0;
   --orchestrator: #e6c07b;
   --user: #9fb7c9;
   --vscode: #79b8ff;
@@ -142,6 +144,26 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .message.cursor, .message.master, .message.pilote { border-color: var(--cursor); }
 .message.copilot, .message.vscode, .message.partner, .message.agent1 { border-color: var(--vscode); }
+.message.vibe { border-color: var(--vibe); }
+.message.antigravity { border-color: var(--antigravity); }
+
+.layout.comptes { grid-template-columns: 1fr; max-width: 960px; }
+.provider-list { display: grid; gap: 16px; }
+.provider-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: #141b13;
+}
+.provider-card h2 { font-size: 18px; margin-bottom: 6px; }
+.provider-status { font-weight: 600; margin: 4px 0; }
+.provider-status.ok { color: var(--ok); }
+.provider-status.warn { color: var(--orchestrator); }
+.provider-status.bad { color: var(--danger); }
+.provider-card .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.muted { color: var(--muted); }
+.quota-list, .model-list { margin-top: 8px; }
+.health { flex-wrap: wrap; justify-content: flex-end; max-width: 420px; }
 .message.agent-n-1 { border-color: var(--vscode); }
 .message.agent-n-2 { border-color: #c9a227; }
 .message.agent-n-3 { border-color: #79b8ff; }
@@ -187,6 +209,42 @@ li { padding: 6px 0; border-bottom: 1px solid var(--line); }
 button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
 
 .top-actions { display: flex; gap: 8px; align-items: center; }
+
+.slot-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #121810;
+  display: grid;
+  gap: 6px;
+}
+
+.slot-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inline-override {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.inline-override input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #121810;
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+}
 
 @media (max-width: 1100px) {
   .layout, .layout.salon { grid-template-columns: 1fr; }
